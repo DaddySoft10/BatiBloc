@@ -3,7 +3,10 @@ package domaine;
 import dto.PlanDTO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,9 +14,13 @@ import java.util.List;
 
 public class Controller {
     private final Batiment batiment;
+    private int indexVueCourante;
+    private List<BufferedImage> imagesVues;
 
     public Controller() {
         this.batiment = new Batiment();
+        this.indexVueCourante = -1;
+        this.imagesVues = new ArrayList<>();
     }
 
     public int importerPlanPdf(String cheminFichier) throws IOException {
@@ -33,10 +40,17 @@ public class Controller {
         try (PDDocument document = Loader.loadPDF(fichier)) {
             int nombrePages = document.getNumberOfPages();
             List<String> vues = new ArrayList<>();
-            for (int i = 1; i <= nombrePages; i++) {
-                vues.add("Vue " + i);
+            List<BufferedImage> nouvellesImagesVues = new ArrayList<>();
+            PDFRenderer renderer = new PDFRenderer(document);
+
+            for (int i = 0; i < nombrePages; i++) {
+                vues.add("Vue " + (i + 1));
+                nouvellesImagesVues.add(renderer.renderImageWithDPI(i, 120, ImageType.RGB));
             }
+
             this.batiment.getPlan().definirContenu(cheminFichier, vues);
+            this.imagesVues = nouvellesImagesVues;
+            this.indexVueCourante = nombrePages > 0 ? 0 : -1;
             return nombrePages;
         }
     }
@@ -50,6 +64,33 @@ public class Controller {
                 this.batiment.getPlan().getCheminFichier(),
                 this.batiment.getPlan().getVues()
         );
+    }
+
+    public int getIndexVueCourante() {
+        return this.indexVueCourante;
+    }
+
+    public String getNomVueCourante() {
+        List<String> vues = this.batiment.getPlan().getVues();
+        if (this.indexVueCourante < 0 || this.indexVueCourante >= vues.size()) {
+            return "";
+        }
+        return vues.get(this.indexVueCourante);
+    }
+
+    public void selectionnerVue(int index) {
+        List<String> vues = this.batiment.getPlan().getVues();
+        if (index < 0 || index >= vues.size()) {
+            throw new IllegalArgumentException("Index de vue invalide.");
+        }
+        this.indexVueCourante = index;
+    }
+
+    public BufferedImage getImageVueCourante() {
+        if (this.indexVueCourante < 0 || this.indexVueCourante >= this.imagesVues.size()) {
+            return null;
+        }
+        return this.imagesVues.get(this.indexVueCourante);
     }
 
     public int getNombreZonesFacadeCourante() {

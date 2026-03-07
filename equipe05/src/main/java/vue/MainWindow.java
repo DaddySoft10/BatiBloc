@@ -4,6 +4,8 @@ import domaine.Controller;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -25,6 +27,9 @@ public class MainWindow extends JFrame {
 
     // Attribut pour boutons radio
     private ButtonGroup typeGroup;
+    private DefaultListModel<String> listeVuesModel;
+    private JList<String> listeVues;
+    private JLabel lblVueCourante;
 
     public MainWindow() {
         this.controller = new Controller();
@@ -98,6 +103,28 @@ public class MainWindow extends JFrame {
 
         this.txtPosY = this.createNumberField();
         this.txtPosY.setEditable(false);
+
+        this.listeVuesModel = new DefaultListModel<>();
+        this.listeVues = new JList<>(this.listeVuesModel);
+        this.listeVues.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        this.listeVues.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                if (e.getValueIsAdjusting()) {
+                    return;
+                }
+                int indexSelectionne = listeVues.getSelectedIndex();
+                if (indexSelectionne >= 0) {
+                    controller.selectionnerVue(indexSelectionne);
+                    mettreAJourVueCourante();
+                    if (drawingPanel != null) {
+                        drawingPanel.repaint();
+                    }
+                }
+            }
+        });
+
+        this.lblVueCourante = new JLabel("Vue courante: Aucune");
     }
 
     private JTextField createNumberField() {
@@ -189,6 +216,8 @@ public class MainWindow extends JFrame {
                     "Importation reussie: " + nombrePages + " page(s) detectee(s).",
                     "Import PDF",
                     JOptionPane.INFORMATION_MESSAGE);
+            this.rafraichirVuesDuPlan();
+            this.drawingPanel.repaint();
         } catch (IllegalArgumentException | IOException ex) {
             JOptionPane.showMessageDialog(this,
                     "Echec de l'importation PDF: " + ex.getMessage(),
@@ -267,6 +296,16 @@ public class MainWindow extends JFrame {
         leftSideBar.add(radClassique);
         leftSideBar.add(radBlocs);
         leftSideBar.add(radOuverture);
+        leftSideBar.add(Box.createVerticalStrut(20));
+        leftSideBar.add(new JLabel("Vues importees :"));
+        leftSideBar.add(Box.createVerticalStrut(10));
+
+        JScrollPane scrollVues = new JScrollPane(this.listeVues);
+        scrollVues.setPreferredSize(new Dimension(180, 140));
+        scrollVues.setMaximumSize(new Dimension(180, 140));
+        leftSideBar.add(scrollVues);
+        leftSideBar.add(Box.createVerticalStrut(8));
+        leftSideBar.add(this.lblVueCourante);
         leftSideBar.add(Box.createVerticalGlue());
 
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -317,6 +356,29 @@ public class MainWindow extends JFrame {
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         panel.add(field, gbc);
+    }
+
+    private void rafraichirVuesDuPlan() {
+        this.listeVuesModel.clear();
+        for (String vue : this.controller.getVuesDuPlan()) {
+            this.listeVuesModel.addElement(vue);
+        }
+
+        int indexCourant = this.controller.getIndexVueCourante();
+        if (indexCourant >= 0 && indexCourant < this.listeVuesModel.size()) {
+            this.listeVues.setSelectedIndex(indexCourant);
+        }
+
+        this.mettreAJourVueCourante();
+    }
+
+    private void mettreAJourVueCourante() {
+        String nomVue = this.controller.getNomVueCourante();
+        if (nomVue == null || nomVue.isBlank()) {
+            this.lblVueCourante.setText("Vue courante: Aucune");
+            return;
+        }
+        this.lblVueCourante.setText("Vue courante: " + nomVue);
     }
 
     public static void main(String[] args) {
