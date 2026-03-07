@@ -6,6 +6,7 @@ import javax.swing.BorderFactory;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.image.BufferedImage;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
@@ -44,6 +45,26 @@ public class DrawingPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+
+        BufferedImage imageVue = this.mainWindow.getController().getImageVueCourante();
+        if (imageVue != null) {
+            int panelLargeur = this.getWidth();
+            int panelHauteur = this.getHeight();
+            int imageLargeur = imageVue.getWidth();
+            int imageHauteur = imageVue.getHeight();
+
+            double ratioLargeur = (double) panelLargeur / imageLargeur;
+            double ratioHauteur = (double) panelHauteur / imageHauteur;
+            double ratio = Math.min(ratioLargeur, ratioHauteur);
+
+            int largeurDessinee = (int) Math.round(imageLargeur * ratio);
+            int hauteurDessinee = (int) Math.round(imageHauteur * ratio);
+            int x = (panelLargeur - largeurDessinee) / 2;
+            int y = (panelHauteur - hauteurDessinee) / 2;
+
+            g.drawImage(imageVue, x, y, largeurDessinee, hauteurDessinee, null);
+        }
+
         if (this.afficheur != null) {
             int nombreZones = this.mainWindow.getController().getNombreZonesFacadeCourante();
             this.afficheur.drawBatiment(g, nombreZones);
