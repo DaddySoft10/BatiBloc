@@ -1,63 +1,63 @@
-# BâtiBloc - Équipe 05
+# BatiBloc - TP3
 
-Application desktop Java (Swing) pour préparer et estimer des travaux de maçonnerie à partir de plans.
+## Description
+BatiBloc est une application permettant d'importer un plan en format PDF et de gerer differentes vues du plan.
 
-## Objectif
+Cette version correspond au **livrable 3** du projet. Elle permet au client de tester certaines fonctionnalites principales de l'application.
 
-BâtiBloc permet de charger un plan PDF, de manipuler ses vues, puis de préparer une estimation liée aux zones de façade.
+## Prerequis
+- Java 21 ou plus recent
+- Un fichier PDF contenant un plan (plusieurs pages possibles)
 
-## Fonctionnalités réalisées
+## Lancer l'application
 
-- Importer un fichier PDF contenant plusieurs pages.
-- Afficher et naviguer entre les différentes vues/pages du PDF.
-- Supprimer une ou plusieurs vues/pages importées.
-- Rogner (crop) les vues pour conserver uniquement la zone utile.
-- Créer des zones de travail (formes et types de zone).
-- Simuler un placement de blocs et calculer une estimation de coût.
+1. Telecharger ou cloner le projet.
+2. Se placer dans le dossier du projet.
+3. Executer le fichier jar :
 
-## Stack technique
+```bash
+java -jar equipe05.jar
+```
 
-- Java 17
-- Maven
-- Swing (interface graphique)
+## Fonctionnalites disponibles
+
+### 1. Importation d'un plan PDF
+L'utilisateur peut importer un fichier PDF contenant un ou plusieurs plans.
+
+Etapes :
+1. Ouvrir l'application.
+2. Cliquer sur **Importer un PDF**.
+3. Selectionner un fichier PDF sur votre ordinateur.
+
+### 2. Visualisation des vues
+Apres l'importation du PDF, l'utilisateur peut naviguer entre les differentes vues correspondant aux pages du plan.
+
+### 3. Suppression d'une vue
+L'utilisateur peut supprimer une ou plusieurs vues du plan importe.
+
+### 4. Rognage d'une vue
+Il est possible de rogner une vue pour ne conserver qu'une partie specifique du plan.
 
 ## Structure du projet
+Le projet utilise une architecture avec un **controleur** qui gere les interactions entre la vue et la logique de l'application.
 
-- `equipe05/src/main/java/domaine` : logique métier (bâtiment, façade, zones, contrôleur).
-- `equipe05/src/main/java/vue` : interface utilisateur (fenêtre principale, panneau de dessin).
-- `equipe05/src/main/java/vue/drawer` : rendu graphique des vues.
+Le controleur :
+- ne retourne pas d'objets complexes du domaine
+- ne prend pas d'objets complexes du domaine comme parametres
+- communique avec la vue via des donnees simples (DTO si utilises)
 
-## Prérequis
+## Depot Git
+Le projet est remis via le depot Git.
 
-- JDK 17 installé
-- Maven installé
-
-## Installation et lancement
-
-Depuis la racine du dépôt :
-
-```bash
-cd equipe05
-mvn clean package
-mvn exec:java -Dexec.mainClass="vue.MainWindow"
-```
-
-Alternative :
+Pour la remise :
+1. Placer le fichier `equipe05.jar` a la racine du projet.
+2. Verifier que la branche `main` contient tout le code.
+3. Creer la branche de remise :
 
 ```bash
-cd equipe05
-java -jar target/equipe05-1.0-SNAPSHOT.jar
+git checkout -b remise_3
+git push origin remise_3
 ```
 
-## Flux d’utilisation
-
-1. Importer un plan PDF multi-pages.
-2. Parcourir les vues/pages disponibles.
-3. Supprimer les vues non pertinentes.
-4. Rogner les vues pour isoler les zones d’intérêt.
-5. Créer/positionner les zones de façade.
-6. Lancer le calcul d’estimation.
-
-## Équipe
-
-Projet réalisé par l’Équipe 05.
+## Equipe
+Equipe 05 - Projet BatiBloc
