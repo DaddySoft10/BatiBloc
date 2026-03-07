@@ -11,9 +11,11 @@ import java.util.List;
 
 public class Controller {
     private final Batiment batiment;
+    private int indexVueCourante;
 
     public Controller() {
         this.batiment = new Batiment();
+        this.indexVueCourante = -1;
     }
 
     public int importerPlanPdf(String cheminFichier) throws IOException {
@@ -37,6 +39,7 @@ public class Controller {
                 vues.add("Vue " + i);
             }
             this.batiment.getPlan().definirContenu(cheminFichier, vues);
+            this.indexVueCourante = nombrePages > 0 ? 0 : -1;
             return nombrePages;
         }
     }
@@ -50,6 +53,26 @@ public class Controller {
                 this.batiment.getPlan().getCheminFichier(),
                 this.batiment.getPlan().getVues()
         );
+    }
+
+    public int getIndexVueCourante() {
+        return this.indexVueCourante;
+    }
+
+    public String getNomVueCourante() {
+        List<String> vues = this.batiment.getPlan().getVues();
+        if (this.indexVueCourante < 0 || this.indexVueCourante >= vues.size()) {
+            return "";
+        }
+        return vues.get(this.indexVueCourante);
+    }
+
+    public void selectionnerVue(int index) {
+        List<String> vues = this.batiment.getPlan().getVues();
+        if (index < 0 || index >= vues.size()) {
+            throw new IllegalArgumentException("Index de vue invalide.");
+        }
+        this.indexVueCourante = index;
     }
 
     public int getNombreZonesFacadeCourante() {

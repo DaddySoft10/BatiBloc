@@ -4,6 +4,7 @@ import vue.drawer.AfficheurBatiment;
 import javax.swing.JPanel;
 import javax.swing.BorderFactory;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -46,6 +47,13 @@ public class DrawingPanel extends JPanel {
         if (this.afficheur != null) {
             int nombreZones = this.mainWindow.getController().getNombreZonesFacadeCourante();
             this.afficheur.drawBatiment(g, nombreZones);
+        }
+
+        String vueCourante = this.mainWindow.getController().getNomVueCourante();
+        if (vueCourante != null && !vueCourante.isBlank()) {
+            g.setColor(new Color(30, 30, 30));
+            g.setFont(new Font("SansSerif", Font.BOLD, 14));
+            g.drawString("Affichage: " + vueCourante, 12, 22);
         }
     }
 }
