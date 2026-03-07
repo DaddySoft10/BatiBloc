@@ -1,5 +1,14 @@
 package domaine;
 
+import dto.PlanDTO;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class Controller {
     private final Batiment batiment;
 
@@ -7,58 +16,90 @@ public class Controller {
         this.batiment = new Batiment();
     }
 
-    public Batiment getBatiment() {
-        return this.batiment;
+    public int importerPlanPdf(String cheminFichier) throws IOException {
+        if (cheminFichier == null || cheminFichier.isBlank()) {
+            throw new IllegalArgumentException("Le chemin du fichier PDF est invalide.");
+        }
+
+        File fichier = new File(cheminFichier);
+        if (!fichier.exists() || !fichier.isFile()) {
+            throw new IOException("Le fichier PDF est introuvable: " + cheminFichier);
+        }
+
+        if (!cheminFichier.toLowerCase().endsWith(".pdf")) {
+            throw new IllegalArgumentException("Le fichier selectionne doit etre un PDF.");
+        }
+
+        try (PDDocument document = Loader.loadPDF(fichier)) {
+            int nombrePages = document.getNumberOfPages();
+            List<String> vues = new ArrayList<>();
+            for (int i = 1; i <= nombrePages; i++) {
+                vues.add("Vue " + i);
+            }
+            this.batiment.getPlan().definirContenu(cheminFichier, vues);
+            return nombrePages;
+        }
     }
 
+    public List<String> getVuesDuPlan() {
+        return this.batiment.getPlan().getVues();
+    }
+
+    public PlanDTO getPlanCourant() {
+        return new PlanDTO(
+                this.batiment.getPlan().getCheminFichier(),
+                this.batiment.getPlan().getVues()
+        );
+    }
+
+    public int getNombreZonesFacadeCourante() {
+        return this.batiment.getFacadeCourante().getZones().size();
+    }
 
     public String simulerPlacement(double largeurMetres, double hauteurMetres) {
-        //  (1 mètre = 39.3701 pouces)
+        //  (1 metre = 39.3701 pouces)
         double largeurPouces = largeurMetres * 39.3701;
         double hauteurPouces = hauteurMetres * 39.3701;
 
         // Constantes du domaine
         final double BLOC_L = 12.0;
         final double BLOC_H = 8.0;
-        final double PRIX_UNITAIRE = 20.0; // Basé sur le calcul24 blocs = 480$ (480/24 = 20)
+        final double PRIX_UNITAIRE = 20.0; // Base sur le calcul24 blocs = 480$ (480/24 = 20)
         final double MIN_RETAILLE = 6.0;
 
         // 1 Calcul (Hauteur)
         int nbRangees = (int) (hauteurPouces / BLOC_H);
 
-        // 2 Analysela largeur et de la retaille
+        // 2 Analyse de la largeur et de la retaille
         int nbColonnesPleines = (int) (largeurPouces / BLOC_L);
         double retaille = largeurPouces % BLOC_L;
 
         int nbBlocsCoupes;
 
-        // 3 Application de la règle d'emprunt
+        // 3 Application de la regle d'emprunt
         if (retaille > 0 && retaille < MIN_RETAILLE) {
-
             nbColonnesPleines -= 1;
             nbBlocsCoupes = 2;
         } else if (retaille >= MIN_RETAILLE) {
-
             nbBlocsCoupes = 1;
         } else {
-
             nbBlocsCoupes = 0;
         }
 
-        //Bilan et Estimation
+        // Bilan et estimation
         int blocsParRangee = nbColonnesPleines + nbBlocsCoupes;
         int nbTotalBlocs = blocsParRangee * nbRangees;
         double coutTotal = nbTotalBlocs * PRIX_UNITAIRE;
 
-        //la réponse
+        // Reponse
         return String.format(java.util.Locale.US,
                 "Bilan de la simulation :\n\n" +
                         "Dimensions converties : %.2f\" L x %.2f\" H\n" +
-                        "Nombre de rangées : %d\n" +
-                        "Blocs par rangée : %d\n" +
+                        "Nombre de rangees : %d\n" +
+                        "Blocs par rangee : %d\n" +
                         "------------------------------------\n" +
                         "- Nombre total de blocs : %d blocs\n" +
-                        "- Coût estimé : %.2f $",
+                        "- Cout estime : %.2f $",
                 largeurPouces, hauteurPouces, nbRangees, blocsParRangee, nbTotalBlocs, coutTotal);
     }
 

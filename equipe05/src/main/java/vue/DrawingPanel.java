@@ -17,9 +17,8 @@ public class DrawingPanel extends JPanel {
         this.setBackground(Color.WHITE);
         this.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
 
-        this.afficheur = new AfficheurBatiment(this.mainWindow.getController().getBatiment());
+        this.afficheur = new AfficheurBatiment();
 
-        // Implémentation du diagramme de séquence 3.1
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -29,21 +28,15 @@ public class DrawingPanel extends JPanel {
     }
 
     private void gererClicSouris(int xPixels, int yPixels) {
-        // Récupération des données validées depuis l'interface
         double largeur = this.mainWindow.getLargeurSaisie();
         double hauteur = this.mainWindow.getHauteurSaisie();
         String forme = this.mainWindow.getFormeSaisie();
         String typeZone = this.mainWindow.getTypeZoneSelectionne();
 
-
-
-        double xPouces = (double) xPixels; // Placeholder en attendant la logique de zoom
+        double xPouces = (double) xPixels;
         double yPouces = (double) yPixels;
 
-        // Appel au contrôleur pour instancier la zone
         this.mainWindow.getController().ajouterZone(xPouces, yPouces, largeur, hauteur, forme, typeZone);
-
-        // Rafraîchissement de la zone de dessin pour afficher la nouvelle zone
         this.repaint();
     }
 
@@ -51,7 +44,8 @@ public class DrawingPanel extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         if (this.afficheur != null) {
-            this.afficheur.drawBatiment(g);
+            int nombreZones = this.mainWindow.getController().getNombreZonesFacadeCourante();
+            this.afficheur.drawBatiment(g, nombreZones);
         }
     }
 }

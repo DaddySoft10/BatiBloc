@@ -1,18 +1,22 @@
 package vue;
 
 import domaine.Controller;
+
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
 
 public class MainWindow extends JFrame {
     private final Controller controller;
     private final DrawingPanel drawingPanel;
 
-    // Attributs pour les  propriétés
+    // Attributs pour les proprietes
     private JTextField txtForme;
     private JTextField txtLargeur;
     private JTextField txtHauteur;
@@ -25,7 +29,7 @@ public class MainWindow extends JFrame {
     public MainWindow() {
         this.controller = new Controller();
 
-        this.setTitle("BâtiBloc - Équipe 05");
+        this.setTitle("BatiBloc - Equipe 05");
         this.setSize(1280, 800);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setLocationRelativeTo(null);
@@ -55,7 +59,6 @@ public class MainWindow extends JFrame {
         return this.controller;
     }
 
-
     public String getFormeSaisie() {
         return this.txtForme.getText();
     }
@@ -80,9 +83,8 @@ public class MainWindow extends JFrame {
         if (this.typeGroup != null && this.typeGroup.getSelection() != null) {
             return this.typeGroup.getSelection().getActionCommand();
         }
-        return "Classique"; // deefaut
+        return "Classique";
     }
-
 
     private void initComponents() {
         this.txtForme = new JTextField("Rectangle");
@@ -133,10 +135,19 @@ public class MainWindow extends JFrame {
     private void initMenuBar() {
         JMenuBar menuBar = new JMenuBar();
         JMenu menuFichier = new JMenu("Fichier");
-        menuFichier.add(new JMenuItem("Importer un plan PDF..."));
-        menuFichier.add(new JMenuItem("Sauvegarder le projet"));
+
+        JMenuItem itemImporter = new JMenuItem("Importer un plan PDF...");
+        itemImporter.addActionListener(e -> this.importerPlanPdf());
+
+        JMenuItem itemSauvegarder = new JMenuItem("Sauvegarder le projet");
+        JMenuItem itemQuitter = new JMenuItem("Quitter");
+        itemQuitter.addActionListener(e -> this.dispose());
+
+        menuFichier.add(itemImporter);
+        menuFichier.add(itemSauvegarder);
         menuFichier.addSeparator();
-        menuFichier.add(new JMenuItem("Quitter"));
+        menuFichier.add(itemQuitter);
+
         menuBar.add(menuFichier);
         this.setJMenuBar(menuBar);
     }
@@ -144,7 +155,11 @@ public class MainWindow extends JFrame {
     private void initTopToolBar() {
         JToolBar topToolBar = new JToolBar();
         topToolBar.setFloatable(false);
-        topToolBar.add(new JButton("Importer un plan PDF"));
+
+        JButton btnImporter = new JButton("Importer un plan PDF");
+        btnImporter.addActionListener(e -> this.importerPlanPdf());
+
+        topToolBar.add(btnImporter);
         topToolBar.addSeparator();
         topToolBar.add(new JButton("Sauvegarder"));
         topToolBar.addSeparator();
@@ -156,6 +171,32 @@ public class MainWindow extends JFrame {
         this.add(topToolBar, BorderLayout.NORTH);
     }
 
+    private void importerPlanPdf() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Selectionner un plan PDF");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Fichiers PDF (*.pdf)", "pdf"));
+
+        int resultat = fileChooser.showOpenDialog(this);
+        if (resultat != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File fichierSelectionne = fileChooser.getSelectedFile();
+
+        try {
+            int nombrePages = this.controller.importerPlanPdf(fichierSelectionne.getAbsolutePath());
+            JOptionPane.showMessageDialog(this,
+                    "Importation reussie: " + nombrePages + " page(s) detectee(s).",
+                    "Import PDF",
+                    JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalArgumentException | IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Echec de l'importation PDF: " + ex.getMessage(),
+                    "Erreur import PDF",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void afficherEstimation() {
         double largeur = this.getLargeurSaisie();
         double hauteur = this.getHauteurSaisie();
@@ -163,7 +204,7 @@ public class MainWindow extends JFrame {
         // Validation de base pour eviter les calculs non necessaires
         if (largeur <= 0 || hauteur <= 0) {
             JOptionPane.showMessageDialog(this,
-                    "Veuillez saisir des dimensions valides (strictement supérieures à 0) dans le panneau de droite.",
+                    "Veuillez saisir des dimensions valides (strictement superieures a 0) dans le panneau de droite.",
                     "Erreur de saisie",
                     JOptionPane.ERROR_MESSAGE);
             return;
@@ -175,7 +216,7 @@ public class MainWindow extends JFrame {
         // Affichage du bilan final
         JOptionPane.showMessageDialog(this,
                 resultat,
-                "Estimation des coûts - BâtiBloc",
+                "Estimation des couts - BatiBloc",
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -184,7 +225,7 @@ public class MainWindow extends JFrame {
         leftSideBar.setLayout(new BoxLayout(leftSideBar, BoxLayout.Y_AXIS));
         leftSideBar.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        leftSideBar.add(new JLabel("Sélection de forme :"));
+        leftSideBar.add(new JLabel("Selection de forme :"));
         leftSideBar.add(Box.createVerticalStrut(10));
 
         Dimension btnSize = new Dimension(180, 35);
@@ -192,12 +233,12 @@ public class MainWindow extends JFrame {
         btnRect.setMaximumSize(btnSize);
         JButton btnTri = new JButton("Triangle");
         btnTri.setMaximumSize(btnSize);
-        JButton btnTriTronq = new JButton("Triangle tronqué");
+        JButton btnTriTronq = new JButton("Triangle tronque");
         btnTriTronq.setMaximumSize(btnSize);
 
         btnRect.addActionListener(e -> this.txtForme.setText("Rectangle"));
         btnTri.addActionListener(e -> this.txtForme.setText("Triangle"));
-        btnTriTronq.addActionListener(e -> this.txtForme.setText("Triangle tronqué"));
+        btnTriTronq.addActionListener(e -> this.txtForme.setText("Triangle tronque"));
 
         leftSideBar.add(btnRect);
         leftSideBar.add(Box.createVerticalStrut(5));
@@ -215,7 +256,7 @@ public class MainWindow extends JFrame {
         JRadioButton radBlocs = new JRadioButton("Armature en blocs");
         radBlocs.setActionCommand("Blocs");
 
-        JRadioButton radOuverture = new JRadioButton("Ouverture (porte/fenêtre)");
+        JRadioButton radOuverture = new JRadioButton("Ouverture (porte/fenetre)");
         radOuverture.setActionCommand("Ouverture");
 
         this.typeGroup = new ButtonGroup();
@@ -229,7 +270,7 @@ public class MainWindow extends JFrame {
         leftSideBar.add(Box.createVerticalGlue());
 
         JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setBorder(BorderFactory.createTitledBorder("Outils de création"));
+        wrapper.setBorder(BorderFactory.createTitledBorder("Outils de creation"));
         wrapper.setMinimumSize(new Dimension(220, 0));
         wrapper.add(leftSideBar, BorderLayout.CENTER);
 
@@ -238,7 +279,7 @@ public class MainWindow extends JFrame {
 
     private JPanel buildRightSideBar() {
         JPanel rightSideBar = new JPanel(new GridBagLayout());
-        rightSideBar.setBorder(BorderFactory.createTitledBorder("Propriétés de la zone"));
+        rightSideBar.setBorder(BorderFactory.createTitledBorder("Proprietes de la zone"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;

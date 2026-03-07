@@ -5,11 +5,13 @@ import java.util.List;
 
 public class Batiment {
     private final List<Facade> facades;
+    private final Plan plan;
     private Facade facadeCourante;
 
     public Batiment() {
         this.facades = new ArrayList<>();
-        // Initialisation avec une façade par défaut selon le concept du projet
+        this.plan = new Plan();
+        // Initialisation avec une facade par defaut selon le concept du projet
         this.facadeCourante = new Facade();
         this.facades.add(this.facadeCourante);
     }
@@ -22,5 +24,9 @@ public class Batiment {
 
     public Facade getFacadeCourante() {
         return this.facadeCourante;
+    }
+
+    public Plan getPlan() {
+        return this.plan;
     }
 }

@@ -1,17 +1,12 @@
 package vue.drawer;
 
-import domaine.Batiment;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics;
 
 public class AfficheurBatiment {
-    private Batiment batiment;
-
-    public AfficheurBatiment(Batiment batiment) {
-        this.batiment = batiment;
-    }
-
-    public void drawBatiment(Graphics g) {
+    public void drawBatiment(Graphics g, int nombreZones) {
         g.setColor(Color.BLUE);
-        g.drawString("Simulation BâtiBloc Active - Prêt pour le dessin", 50, 50);
+        g.drawString("Simulation BatiBloc active - Pret pour le dessin", 50, 50);
+        g.drawString("Nombre de zones: " + nombreZones, 50, 75);
     }
 }
