@@ -305,6 +305,11 @@ public class MainWindow extends JFrame {
         scrollVues.setMaximumSize(new Dimension(180, 140));
         leftSideBar.add(scrollVues);
         leftSideBar.add(Box.createVerticalStrut(8));
+        JButton btnSupprimerVue = new JButton("Supprimer la vue");
+        btnSupprimerVue.setMaximumSize(new Dimension(180, 35));
+        btnSupprimerVue.addActionListener(e -> this.supprimerVueSelectionnee());
+        leftSideBar.add(btnSupprimerVue);
+        leftSideBar.add(Box.createVerticalStrut(8));
         leftSideBar.add(this.lblVueCourante);
         leftSideBar.add(Box.createVerticalGlue());
 
@@ -379,6 +384,39 @@ public class MainWindow extends JFrame {
             return;
         }
         this.lblVueCourante.setText("Vue courante: " + nomVue);
+    }
+
+    private void supprimerVueSelectionnee() {
+        int indexSelectionne = this.listeVues.getSelectedIndex();
+        if (indexSelectionne < 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Veuillez selectionner une vue a supprimer.",
+                    "Suppression de vue",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String nomVue = this.listeVuesModel.getElementAt(indexSelectionne);
+        int confirmation = JOptionPane.showConfirmDialog(this,
+                "Supprimer " + nomVue + " ?",
+                "Confirmer la suppression",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+
+        if (confirmation != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            this.controller.supprimerVue(indexSelectionne);
+            this.rafraichirVuesDuPlan();
+            this.drawingPanel.repaint();
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Suppression impossible: " + ex.getMessage(),
+                    "Erreur suppression",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     public static void main(String[] args) {

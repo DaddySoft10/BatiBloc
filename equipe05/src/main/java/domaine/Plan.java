@@ -27,4 +27,11 @@ public class Plan {
             this.vues.addAll(nouvellesVues);
         }
     }
+
+    public void supprimerVue(int index) {
+        if (index < 0 || index >= this.vues.size()) {
+            throw new IllegalArgumentException("Index de vue invalide.");
+        }
+        this.vues.remove(index);
+    }
 }

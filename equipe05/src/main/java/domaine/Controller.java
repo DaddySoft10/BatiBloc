@@ -93,6 +93,33 @@ public class Controller {
         return this.imagesVues.get(this.indexVueCourante);
     }
 
+    public void supprimerVue(int index) {
+        List<String> vues = this.batiment.getPlan().getVues();
+        if (index < 0 || index >= vues.size()) {
+            throw new IllegalArgumentException("Index de vue invalide.");
+        }
+
+        this.batiment.getPlan().supprimerVue(index);
+
+        if (index < this.imagesVues.size()) {
+            this.imagesVues.remove(index);
+        }
+
+        int nbVuesRestantes = this.batiment.getPlan().getVues().size();
+        if (nbVuesRestantes == 0) {
+            this.indexVueCourante = -1;
+            return;
+        }
+
+        if (this.indexVueCourante >= nbVuesRestantes) {
+            this.indexVueCourante = nbVuesRestantes - 1;
+        } else if (this.indexVueCourante == index) {
+            this.indexVueCourante = Math.min(index, nbVuesRestantes - 1);
+        } else if (this.indexVueCourante > index) {
+            this.indexVueCourante -= 1;
+        }
+    }
+
     public int getNombreZonesFacadeCourante() {
         return this.batiment.getFacadeCourante().getZones().size();
     }
