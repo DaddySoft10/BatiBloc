@@ -6,6 +6,8 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -93,6 +95,56 @@ public class Controller {
         return this.imagesVues.get(this.indexVueCourante);
     }
 
+    public int getNombreVues() {
+        return this.batiment.getPlan().getVues().size();
+    }
+
+    public void rognerVueCourante(int x, int y, int largeur, int hauteur) {
+        Rectangle zoneImage = new Rectangle(x, y, largeur, hauteur);
+        if (zoneImage.width <= 0 || zoneImage.height <= 0) {
+            throw new IllegalArgumentException("Zone de rognage invalide.");
+        }
+        if (this.indexVueCourante < 0 || this.indexVueCourante >= this.imagesVues.size()) {
+            throw new IllegalStateException("Aucune vue courante selectionnee.");
+        }
+
+        BufferedImage imageSource = this.imagesVues.get(this.indexVueCourante);
+        Rectangle zoneValide = this.normaliserZoneDansImage(zoneImage, imageSource);
+        BufferedImage imageRognee = imageSource.getSubimage(
+                zoneValide.x,
+                zoneValide.y,
+                zoneValide.width,
+                zoneValide.height
+        );
+        this.imagesVues.set(this.indexVueCourante, copierImage(imageRognee));
+    }
+
+    public void ajouterVueRognee(int x, int y, int largeur, int hauteur, String nomVue) {
+        Rectangle zoneImage = new Rectangle(x, y, largeur, hauteur);
+        if (nomVue == null || nomVue.isBlank()) {
+            throw new IllegalArgumentException("Le nom de la vue est invalide.");
+        }
+        if (zoneImage.width <= 0 || zoneImage.height <= 0) {
+            throw new IllegalArgumentException("Zone de rognage invalide.");
+        }
+        if (this.indexVueCourante < 0 || this.indexVueCourante >= this.imagesVues.size()) {
+            throw new IllegalStateException("Aucune vue courante selectionnee.");
+        }
+
+        BufferedImage imageSource = this.imagesVues.get(this.indexVueCourante);
+        Rectangle zoneValide = this.normaliserZoneDansImage(zoneImage, imageSource);
+        BufferedImage imageRognee = imageSource.getSubimage(
+                zoneValide.x,
+                zoneValide.y,
+                zoneValide.width,
+                zoneValide.height
+        );
+
+        this.batiment.getPlan().ajouterVue(nomVue.trim());
+        this.imagesVues.add(copierImage(imageRognee));
+        this.indexVueCourante = this.imagesVues.size() - 1;
+    }
+
     public void supprimerVue(int index) {
         List<String> vues = this.batiment.getPlan().getVues();
         if (index < 0 || index >= vues.size()) {
@@ -174,5 +226,27 @@ public class Controller {
     public void ajouterZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
         Zone nouvelleZone = new Zone();
         this.batiment.ajouterZone(nouvelleZone);
+    }
+
+    private Rectangle normaliserZoneDansImage(Rectangle zoneImage, BufferedImage imageSource) {
+        int x = Math.max(0, zoneImage.x);
+        int y = Math.max(0, zoneImage.y);
+        int maxLargeur = imageSource.getWidth() - x;
+        int maxHauteur = imageSource.getHeight() - y;
+        int largeur = Math.min(zoneImage.width, maxLargeur);
+        int hauteur = Math.min(zoneImage.height, maxHauteur);
+
+        if (largeur <= 0 || hauteur <= 0) {
+            throw new IllegalArgumentException("Zone de rognage hors limites.");
+        }
+        return new Rectangle(x, y, largeur, hauteur);
+    }
+
+    private BufferedImage copierImage(BufferedImage imageSource) {
+        BufferedImage copie = new BufferedImage(imageSource.getWidth(), imageSource.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = copie.createGraphics();
+        g2d.drawImage(imageSource, 0, 0, null);
+        g2d.dispose();
+        return copie;
     }
 }
