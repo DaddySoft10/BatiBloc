@@ -11,6 +11,7 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
 
@@ -24,6 +25,7 @@ public class MainWindow extends JFrame {
     private JTextField txtHauteur;
     private JTextField txtPosX;
     private JTextField txtPosY;
+    private JTextField txtNomNouvelleVue;
 
     // Attribut pour boutons radio
     private ButtonGroup typeGroup;
@@ -103,6 +105,7 @@ public class MainWindow extends JFrame {
 
         this.txtPosY = this.createNumberField();
         this.txtPosY.setEditable(false);
+        this.txtNomNouvelleVue = new JTextField("Vue rognee");
 
         this.listeVuesModel = new DefaultListModel<>();
         this.listeVues = new JList<>(this.listeVuesModel);
@@ -193,8 +196,18 @@ public class MainWindow extends JFrame {
 
         JButton btnCalculer = new JButton("Calculer l'estimation");
         btnCalculer.addActionListener(e -> this.afficherEstimation());
+        JButton btnZoomPlus = new JButton("Zoom +");
+        btnZoomPlus.addActionListener(e -> this.drawingPanel.zoomerDepuisCentre(1.15));
+        JButton btnZoomMoins = new JButton("Zoom -");
+        btnZoomMoins.addActionListener(e -> this.drawingPanel.zoomerDepuisCentre(1.0 / 1.15));
+        JButton btnRecentrer = new JButton("Recentrer");
+        btnRecentrer.addActionListener(e -> this.drawingPanel.reinitialiserVue());
 
         topToolBar.add(btnCalculer);
+        topToolBar.addSeparator();
+        topToolBar.add(btnZoomPlus);
+        topToolBar.add(btnZoomMoins);
+        topToolBar.add(btnRecentrer);
         this.add(topToolBar, BorderLayout.NORTH);
     }
 
@@ -257,7 +270,7 @@ public class MainWindow extends JFrame {
         leftSideBar.add(new JLabel("Selection de forme :"));
         leftSideBar.add(Box.createVerticalStrut(10));
 
-        Dimension btnSize = new Dimension(180, 35);
+        Dimension btnSize = new Dimension(260, 35);
         JButton btnRect = new JButton("Rectangle");
         btnRect.setMaximumSize(btnSize);
         JButton btnTri = new JButton("Triangle");
@@ -301,21 +314,43 @@ public class MainWindow extends JFrame {
         leftSideBar.add(Box.createVerticalStrut(10));
 
         JScrollPane scrollVues = new JScrollPane(this.listeVues);
-        scrollVues.setPreferredSize(new Dimension(180, 140));
-        scrollVues.setMaximumSize(new Dimension(180, 140));
+        scrollVues.setPreferredSize(new Dimension(260, 170));
+        scrollVues.setMaximumSize(new Dimension(260, 170));
         leftSideBar.add(scrollVues);
         leftSideBar.add(Box.createVerticalStrut(8));
         JButton btnSupprimerVue = new JButton("Supprimer la vue");
-        btnSupprimerVue.setMaximumSize(new Dimension(180, 35));
+        btnSupprimerVue.setMaximumSize(new Dimension(260, 35));
         btnSupprimerVue.addActionListener(e -> this.supprimerVueSelectionnee());
         leftSideBar.add(btnSupprimerVue);
+
+        leftSideBar.add(Box.createVerticalStrut(10));
+        leftSideBar.add(new JLabel("Rognage :"));
+        leftSideBar.add(Box.createVerticalStrut(6));
+        JToggleButton btnModeRognage = new JToggleButton("Mode rognage");
+        btnModeRognage.setMaximumSize(new Dimension(260, 35));
+        btnModeRognage.addActionListener(e -> this.drawingPanel.setModeRognageActif(btnModeRognage.isSelected()));
+        leftSideBar.add(btnModeRognage);
+        leftSideBar.add(Box.createVerticalStrut(6));
+        JButton btnRognerVue = new JButton("Rogner vue courante");
+        btnRognerVue.setMaximumSize(new Dimension(260, 35));
+        btnRognerVue.addActionListener(e -> this.rognerVueCouranteDepuisSelection());
+        leftSideBar.add(btnRognerVue);
+        leftSideBar.add(Box.createVerticalStrut(6));
+        this.txtNomNouvelleVue.setMaximumSize(new Dimension(260, 30));
+        leftSideBar.add(this.txtNomNouvelleVue);
+        leftSideBar.add(Box.createVerticalStrut(6));
+        JButton btnCreerVueRognee = new JButton("Creer nouvelle vue rognee");
+        btnCreerVueRognee.setMaximumSize(new Dimension(260, 35));
+        btnCreerVueRognee.addActionListener(e -> this.creerNouvelleVueRogneeDepuisSelection());
+        leftSideBar.add(btnCreerVueRognee);
         leftSideBar.add(Box.createVerticalStrut(8));
         leftSideBar.add(this.lblVueCourante);
         leftSideBar.add(Box.createVerticalGlue());
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBorder(BorderFactory.createTitledBorder("Outils de creation"));
-        wrapper.setMinimumSize(new Dimension(220, 0));
+        wrapper.setMinimumSize(new Dimension(320, 0));
+        wrapper.setPreferredSize(new Dimension(340, 0));
         wrapper.add(leftSideBar, BorderLayout.CENTER);
 
         return wrapper;
@@ -415,6 +450,67 @@ public class MainWindow extends JFrame {
             JOptionPane.showMessageDialog(this,
                     "Suppression impossible: " + ex.getMessage(),
                     "Erreur suppression",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void rognerVueCouranteDepuisSelection() {
+        Rectangle zoneSelectionnee = this.drawingPanel.getSelectionRognageImage();
+        if (zoneSelectionnee == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Activez le mode rognage et selectionnez une zone.",
+                    "Rognage",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            this.controller.rognerVueCourante(
+                    zoneSelectionnee.x,
+                    zoneSelectionnee.y,
+                    zoneSelectionnee.width,
+                    zoneSelectionnee.height
+            );
+            this.drawingPanel.effacerSelectionRognage();
+            this.drawingPanel.repaint();
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Rognage impossible: " + ex.getMessage(),
+                    "Erreur rognage",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void creerNouvelleVueRogneeDepuisSelection() {
+        Rectangle zoneSelectionnee = this.drawingPanel.getSelectionRognageImage();
+        if (zoneSelectionnee == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Activez le mode rognage et selectionnez une zone.",
+                    "Creation vue rognee",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String nomVue = this.txtNomNouvelleVue.getText();
+        if (nomVue == null || nomVue.isBlank()) {
+            nomVue = "Vue " + (this.controller.getNombreVues() + 1);
+        }
+
+        try {
+            this.controller.ajouterVueRognee(
+                    zoneSelectionnee.x,
+                    zoneSelectionnee.y,
+                    zoneSelectionnee.width,
+                    zoneSelectionnee.height,
+                    nomVue
+            );
+            this.rafraichirVuesDuPlan();
+            this.drawingPanel.effacerSelectionRognage();
+            this.drawingPanel.repaint();
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Creation impossible: " + ex.getMessage(),
+                    "Erreur creation vue",
                     JOptionPane.ERROR_MESSAGE);
         }
     }

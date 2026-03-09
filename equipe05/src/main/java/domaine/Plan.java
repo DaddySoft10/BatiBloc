@@ -34,4 +34,11 @@ public class Plan {
         }
         this.vues.remove(index);
     }
+
+    public void ajouterVue(String nomVue) {
+        if (nomVue == null || nomVue.isBlank()) {
+            throw new IllegalArgumentException("Le nom de la vue est invalide.");
+        }
+        this.vues.add(nomVue);
+    }
 }
