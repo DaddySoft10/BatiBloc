@@ -94,7 +94,7 @@ public class MainWindow extends JFrame {
     }
 
     private void initComponents() {
-        this.txtForme = new JTextField("Rectangle");
+        this.txtForme = new JTextField("Rectangulaire");
         this.txtForme.setEditable(false);
 
         this.txtLargeur = this.createNumberField();
@@ -278,9 +278,9 @@ public class MainWindow extends JFrame {
         JButton btnTriTronq = new JButton("Triangle tronque");
         btnTriTronq.setMaximumSize(btnSize);
 
-        btnRect.addActionListener(e -> this.txtForme.setText("Rectangle"));
-        btnTri.addActionListener(e -> this.txtForme.setText("Triangle"));
-        btnTriTronq.addActionListener(e -> this.txtForme.setText("Triangle tronque"));
+        btnRect.addActionListener(e -> this.txtForme.setText("Rectangulaire"));
+        btnTri.addActionListener(e -> this.txtForme.setText("Triangulaire"));
+        btnTriTronq.addActionListener(e -> this.txtForme.setText("TriangulaireTronquee"));
 
         leftSideBar.add(btnRect);
         leftSideBar.add(Box.createVerticalStrut(5));
@@ -296,7 +296,7 @@ public class MainWindow extends JFrame {
         radClassique.setActionCommand("Classique");
 
         JRadioButton radBlocs = new JRadioButton("Armature en blocs");
-        radBlocs.setActionCommand("Blocs");
+        radBlocs.setActionCommand("Bloc");
 
         JRadioButton radOuverture = new JRadioButton("Ouverture (porte/fenetre)");
         radOuverture.setActionCommand("Ouverture");

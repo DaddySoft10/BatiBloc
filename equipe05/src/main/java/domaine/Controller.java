@@ -18,6 +18,7 @@ public class Controller {
     private final Batiment batiment;
     private int indexVueCourante;
     private List<BufferedImage> imagesVues;
+    private double echellePixelsParPouce = 120.0;
 
     public Controller() {
         this.batiment = new Batiment();
@@ -223,9 +224,112 @@ public class Controller {
                 largeurPouces, hauteurPouces, nbRangees, blocsParRangee, nbTotalBlocs, coutTotal);
     }
 
+    // --- Gestion de l'echelle ---
+
+    public void definirEchelle(double pixelsParPouce) {
+        this.echellePixelsParPouce = pixelsParPouce;
+    }
+
+    public double getEchelle() {
+        return this.echellePixelsParPouce;
+    }
+
+    public double convertirPixelsEnPouces(double pixels) {
+        return pixels / this.echellePixelsParPouce;
+    }
+
+    public double convertirPoucesEnPixels(double pouces) {
+        return pouces * this.echellePixelsParPouce;
+    }
+
+    // --- Gestion des zones ---
+
     public void ajouterZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        Zone nouvelleZone = new Zone();
+        Zone nouvelleZone = switch (typeZone) {
+            case "Bloc"      -> new ZoneBloc(x, y, largeur, hauteur, typeForme);
+            case "Ouverture" -> new ZoneOuverture(x, y, largeur, hauteur, typeForme);
+            default          -> switch (typeForme) {
+                case "Rectangulaire"       -> new Rectangulaire(x, y, largeur, hauteur, typeZone);
+                case "Triangulaire"        -> new Triangulaire(x, y, largeur, hauteur, typeZone);
+                case "TriangulaireTronquee" -> new TriangulaireTronquee(x, y, largeur, hauteur, typeZone);
+                default -> new Zone(x, y, largeur, hauteur, typeForme, typeZone);
+            };
+        };
         this.batiment.ajouterZone(nouvelleZone);
+    }
+
+    public void supprimerZone(int index) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) {
+            throw new IllegalArgumentException("Index de zone invalide: " + index);
+        }
+        zones.remove(index);
+    }
+
+    public void modifierZone(int index, double x, double y, double largeur, double hauteur) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) {
+            throw new IllegalArgumentException("Index de zone invalide: " + index);
+        }
+        Zone zone = zones.get(index);
+        zone.setX(x);
+        zone.setY(y);
+        zone.setLargeur(largeur);
+        zone.setHauteur(hauteur);
+    }
+
+    public List<Zone> getZones() {
+        return this.batiment.getFacadeCourante().getZones();
+    }
+
+    public int selectionnerZone(double px, double py) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        int indexTrouve = -1;
+        for (int i = 0; i < zones.size(); i++) {
+            Zone z = zones.get(i);
+            if (z.contientPoint(px, py)) {
+                z.setSelectionnee(true);
+                indexTrouve = i;
+            } else {
+                z.setSelectionnee(false);
+            }
+        }
+        return indexTrouve;
+    }
+
+    public Zone getZoneSelectionnee() {
+        for (Zone z : this.batiment.getFacadeCourante().getZones()) {
+            if (z.isSelectionnee()) {
+                return z;
+            }
+        }
+        return null;
+    }
+
+    public int getIndexZoneSelectionnee() {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        for (int i = 0; i < zones.size(); i++) {
+            if (zones.get(i).isSelectionnee()) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public void deselectionnerToutesLesZones() {
+        for (Zone z : this.batiment.getFacadeCourante().getZones()) {
+            z.setSelectionnee(false);
+        }
+    }
+
+    public int getNombreTotalBlocs() {
+        int total = 0;
+        for (Zone z : this.batiment.getFacadeCourante().getZones()) {
+            if (z instanceof ZoneBloc zb) {
+                total += zb.getNombreBlocs();
+            }
+        }
+        return total;
     }
 
     private Rectangle normaliserZoneDansImage(Rectangle zoneImage, BufferedImage imageSource) {

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile:*)",
+      "Bash(/c/ProgramData/chocolatey/bin/mvn compile:*)",
+      "Bash(\"$JAVA_HOME/bin/javac\" --version)",
+      "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.3.3/plugins/maven/lib/maven3/bin/mvn\" compile 2>&1)",
+      "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.3.3/plugins/maven/lib/maven3/bin/mvn\" compile)"
+    ]
+  }
+}
