@@ -67,4 +67,12 @@ public class Zone {
         }
         this.typeForme = typeForme;
     }
+
+    public Forme getForme() {
+        return Forme.creerDepuis(this.typeForme);
+    }
+
+    public boolean contientPoint(double x, double y) {
+        return this.getForme().contientPoint(this, x, y);
+    }
 }
