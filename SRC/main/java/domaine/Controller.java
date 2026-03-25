@@ -1,6 +1,7 @@
 package domaine;
 
 import dto.PlanDTO;
+import dto.ZoneDTO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
@@ -13,18 +14,21 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class Controller {
     private static final double ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL = 1.0;
 
     private final Batiment batiment;
     private int indexVueCourante;
+    private int indexZoneSelectionnee;
     private List<BufferedImage> imagesVues;
     private double metresParPixel;
 
     public Controller() {
         this.batiment = new Batiment();
         this.indexVueCourante = -1;
+        this.indexZoneSelectionnee = -1;
         this.imagesVues = new ArrayList<>();
         this.metresParPixel = ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL;
     }
@@ -249,42 +253,45 @@ public class Controller {
     public void ajouterZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
         double xReel = this.convertirPixelsEnCoordonneeReelle(x);
         double yReel = this.convertirPixelsEnCoordonneeReelle(y);
-        TypeForme forme = this.convertirTypeForme(typeForme);
-        Zone nouvelleZone = this.creerZone(typeZone, xReel, yReel, largeur, hauteur, forme);
+        Zone nouvelleZone = this.creerZone(xReel, yReel, largeur, hauteur, typeForme, typeZone);
         this.batiment.ajouterZone(nouvelleZone);
+        this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
     }
 
-    private Zone creerZone(
-            String typeZone,
-            double x,
-            double y,
-            double largeur,
-            double hauteur,
-            TypeForme typeForme
-    ) {
-        if (typeZone == null) {
-            return new ZoneClassique(x, y, largeur, hauteur, typeForme);
+    public void supprimerZone(int index) {
+        this.batiment.getFacadeCourante().supprimerZone(index);
+        if (this.indexZoneSelectionnee == index) {
+            this.indexZoneSelectionnee = -1;
+        } else if (this.indexZoneSelectionnee > index) {
+            this.indexZoneSelectionnee -= 1;
         }
-
-        String typeNormalise = typeZone.trim().toUpperCase();
-        return switch (typeNormalise) {
-            case "BLOCS" -> new ZoneBloc(x, y, largeur, hauteur, typeForme);
-            case "CLASSIQUE" -> new ZoneClassique(x, y, largeur, hauteur, typeForme);
-            default -> new Zone(x, y, largeur, hauteur, typeForme);
-        };
     }
 
-    private TypeForme convertirTypeForme(String typeForme) {
-        if (typeForme == null) {
-            return TypeForme.RECTANGULAIRE;
+    public void modifierZone(int index, double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
+        Zone zoneModifiee = this.creerZone(x, y, largeur, hauteur, typeForme, typeZone);
+        this.batiment.getFacadeCourante().modifierZone(index, zoneModifiee);
+        this.indexZoneSelectionnee = index;
+    }
+
+    public List<ZoneDTO> getZones() {
+        List<ZoneDTO> zones = new ArrayList<>();
+        for (Zone zone : this.batiment.getFacadeCourante().getZones()) {
+            zones.add(this.convertirEnZoneDTO(zone));
+        }
+        return zones;
+    }
+
+    public int selectionnerZone(double x, double y) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        for (int i = zones.size() - 1; i >= 0; i--) {
+            if (zones.get(i).contientPoint(x, y)) {
+                this.indexZoneSelectionnee = i;
+                return i;
+            }
         }
 
-        String formeNormalisee = typeForme.trim().toUpperCase();
-        return switch (formeNormalisee) {
-            case "TRIANGLE" -> TypeForme.TRIANGULAIRE;
-            case "TRIANGLE TRONQUE", "TRIANGULAIRE TRONQUEE" -> TypeForme.TRIANGULAIRE_TRONQUEE;
-            default -> TypeForme.RECTANGULAIRE;
-        };
+        this.indexZoneSelectionnee = -1;
+        return -1;
     }
 
     private Rectangle normaliserZoneDansImage(Rectangle zoneImage, BufferedImage imageSource) {
@@ -307,5 +314,52 @@ public class Controller {
         g2d.drawImage(imageSource, 0, 0, null);
         g2d.dispose();
         return copie;
+    }
+
+    private Zone creerZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
+        TypeForme forme = this.convertirTypeForme(typeForme);
+        String typeZoneNormalise = this.normaliserTexte(typeZone);
+
+        return switch (typeZoneNormalise) {
+            case "BLOC", "BLOCS" -> new ZoneBloc(x, y, largeur, hauteur, forme);
+            case "CLASSIQUE" -> new ZoneClassique(x, y, largeur, hauteur, forme);
+            default -> throw new IllegalArgumentException("Type de zone invalide.");
+        };
+    }
+
+    private TypeForme convertirTypeForme(String typeForme) {
+        String typeFormeNormalise = this.normaliserTexte(typeForme);
+
+        return switch (typeFormeNormalise) {
+            case "RECTANGULAIRE", "RECTANGLE" -> TypeForme.RECTANGULAIRE;
+            case "TRIANGULAIRE", "TRIANGLE" -> TypeForme.TRIANGULAIRE;
+            case "TRIANGULAIRE_TRONQUEE", "TRIANGULAIRE TRONQUEE", "TRIANGLE TRONQUE" -> TypeForme.TRIANGULAIRE_TRONQUEE;
+            default -> throw new IllegalArgumentException("Type de forme invalide.");
+        };
+    }
+
+    private ZoneDTO convertirEnZoneDTO(Zone zone) {
+        String typeZone = "ZONE";
+        if (zone instanceof ZoneBloc) {
+            typeZone = "BLOC";
+        } else if (zone instanceof ZoneClassique) {
+            typeZone = "CLASSIQUE";
+        }
+
+        return new ZoneDTO(
+                zone.getX(),
+                zone.getY(),
+                zone.getLargeur(),
+                zone.getHauteur(),
+                zone.getTypeForme().name(),
+                typeZone
+        );
+    }
+
+    private String normaliserTexte(String valeur) {
+        if (valeur == null || valeur.isBlank()) {
+            throw new IllegalArgumentException("La valeur ne peut pas etre vide.");
+        }
+        return valeur.trim().toUpperCase(Locale.ROOT);
     }
 }
