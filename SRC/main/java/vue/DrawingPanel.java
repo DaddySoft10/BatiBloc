@@ -180,12 +180,19 @@ public class DrawingPanel extends JPanel {
     }
 
     private void gererClicSouris(int xPixels, int yPixels) {
+        BufferedImage image = this.mainWindow.getController().getImageVueCourante();
+        RenderContext context = this.calculerContexteRendu(image);
+        PointImage pointImage = this.convertirPointPanelVersImage(xPixels, yPixels, image, context, false);
+        if (pointImage == null) {
+            return;
+        }
+
         double largeur = this.mainWindow.getLargeurSaisie();
         double hauteur = this.mainWindow.getHauteurSaisie();
         String forme = this.mainWindow.getFormeSaisie();
         String typeZone = this.mainWindow.getTypeZoneSelectionne();
 
-        this.mainWindow.getController().ajouterZone(xPixels, yPixels, largeur, hauteur, forme, typeZone);
+        this.mainWindow.getController().ajouterZone(pointImage.x, pointImage.y, largeur, hauteur, forme, typeZone);
         this.repaint();
     }
 

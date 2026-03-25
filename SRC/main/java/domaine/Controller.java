@@ -15,14 +15,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Controller {
+    private static final double ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL = 1.0;
+
     private final Batiment batiment;
     private int indexVueCourante;
     private List<BufferedImage> imagesVues;
+    private double metresParPixel;
 
     public Controller() {
         this.batiment = new Batiment();
         this.indexVueCourante = -1;
         this.imagesVues = new ArrayList<>();
+        this.metresParPixel = ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL;
     }
 
     public int importerPlanPdf(String cheminFichier) throws IOException {
@@ -176,6 +180,25 @@ public class Controller {
         return this.batiment.getFacadeCourante().getZones().size();
     }
 
+    public double getMetresParPixel() {
+        return this.metresParPixel;
+    }
+
+    public void definirMetresParPixel(double metresParPixel) {
+        if (metresParPixel <= 0.0) {
+            throw new IllegalArgumentException("L'echelle doit etre superieure a 0.");
+        }
+        this.metresParPixel = metresParPixel;
+    }
+
+    public double convertirPixelsEnCoordonneeReelle(double pixels) {
+        return pixels * this.metresParPixel;
+    }
+
+    public double convertirCoordonneeReelleEnPixels(double coordonneeReelle) {
+        return coordonneeReelle / this.metresParPixel;
+    }
+
     public String simulerPlacement(double largeurMetres, double hauteurMetres) {
         //  (1 metre = 39.3701 pouces)
         double largeurPouces = largeurMetres * 39.3701;
@@ -224,8 +247,44 @@ public class Controller {
     }
 
     public void ajouterZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        Zone nouvelleZone = new Zone();
+        double xReel = this.convertirPixelsEnCoordonneeReelle(x);
+        double yReel = this.convertirPixelsEnCoordonneeReelle(y);
+        TypeForme forme = this.convertirTypeForme(typeForme);
+        Zone nouvelleZone = this.creerZone(typeZone, xReel, yReel, largeur, hauteur, forme);
         this.batiment.ajouterZone(nouvelleZone);
+    }
+
+    private Zone creerZone(
+            String typeZone,
+            double x,
+            double y,
+            double largeur,
+            double hauteur,
+            TypeForme typeForme
+    ) {
+        if (typeZone == null) {
+            return new ZoneClassique(x, y, largeur, hauteur, typeForme);
+        }
+
+        String typeNormalise = typeZone.trim().toUpperCase();
+        return switch (typeNormalise) {
+            case "BLOCS" -> new ZoneBloc(x, y, largeur, hauteur, typeForme);
+            case "CLASSIQUE" -> new ZoneClassique(x, y, largeur, hauteur, typeForme);
+            default -> new Zone(x, y, largeur, hauteur, typeForme);
+        };
+    }
+
+    private TypeForme convertirTypeForme(String typeForme) {
+        if (typeForme == null) {
+            return TypeForme.RECTANGULAIRE;
+        }
+
+        String formeNormalisee = typeForme.trim().toUpperCase();
+        return switch (formeNormalisee) {
+            case "TRIANGLE" -> TypeForme.TRIANGULAIRE;
+            case "TRIANGLE TRONQUE", "TRIANGULAIRE TRONQUEE" -> TypeForme.TRIANGULAIRE_TRONQUEE;
+            default -> TypeForme.RECTANGULAIRE;
+        };
     }
 
     private Rectangle normaliserZoneDansImage(Rectangle zoneImage, BufferedImage imageSource) {
