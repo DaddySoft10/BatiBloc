@@ -14,4 +14,47 @@ public class ZoneBloc extends Zone {
     public String getTypeZone() {
         return TYPE_ZONE;
     }
+
+    public static class BlocPlace {
+        private final double x;
+        private final double y;
+        private final double largeur;
+        private final double hauteur;
+        private final boolean retaille;
+
+        public BlocPlace(double x, double y, double largeur, double hauteur, boolean retaille) {
+            if (largeur <= 0.0) {
+                throw new IllegalArgumentException("La largeur doit etre superieure a 0.");
+            }
+            if (hauteur <= 0.0) {
+                throw new IllegalArgumentException("La hauteur doit etre superieure a 0.");
+            }
+
+            this.x = x;
+            this.y = y;
+            this.largeur = largeur;
+            this.hauteur = hauteur;
+            this.retaille = retaille;
+        }
+
+        public double getX() {
+            return this.x;
+        }
+
+        public double getY() {
+            return this.y;
+        }
+
+        public double getLargeur() {
+            return this.largeur;
+        }
+
+        public double getHauteur() {
+            return this.hauteur;
+        }
+
+        public boolean isRetaille() {
+            return this.retaille;
+        }
+    }
 }
