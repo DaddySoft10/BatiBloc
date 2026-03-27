@@ -352,7 +352,10 @@ public class DrawingPanel extends JPanel {
         List<ZoneDTO> zones = this.mainWindow.getController().getZones();
 
         for (ZoneDTO zone : zones) {
-            if (!"RECTANGULAIRE".equals(zone.getTypeForme())) {
+            String typeForme = zone.getTypeForme();
+            if (!"RECTANGULAIRE".equals(typeForme)
+                    && !"TRIANGULAIRE".equals(typeForme)
+                    && !"TRIANGULAIRE_TRONQUEE".equals(typeForme)) {
                 continue;
             }
 
@@ -382,23 +385,80 @@ public class DrawingPanel extends JPanel {
             double imageLargeur = zone.getLargeur();
             double imageHauteur = zone.getHauteur();
 
-            int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
-            int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
-            int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
-            int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
+            if ("RECTANGULAIRE".equals(typeForme)) {
+                int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+                int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+                int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
+                int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
 
-            if (screenLargeur <= 0 || screenHauteur <= 0) {
-                continue;
+                if (screenLargeur <= 0 || screenHauteur <= 0) {
+                    continue;
+                }
+
+                g.setColor(couleurRemplissage);
+                g.fillRect(screenX, screenY, screenLargeur, screenHauteur);
+
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setStroke(new BasicStroke(2f));
+                g2d.setColor(couleurContour);
+                g2d.drawRect(screenX, screenY, screenLargeur, screenHauteur);
+                g2d.dispose();
+
+            } else if ("TRIANGULAIRE".equals(typeForme)) {
+                int sommetX = (int) Math.round(context.x + ((imageX + imageLargeur / 2) / imageVue.getWidth()) * context.largeur);
+                int sommetY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+                int basGX   = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+                int basGY   = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
+                int basDX   = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
+                int basDY   = basGY;
+
+                java.awt.Polygon triangle = new java.awt.Polygon();
+                triangle.addPoint(sommetX, sommetY);
+                triangle.addPoint(basGX, basGY);
+                triangle.addPoint(basDX, basDY);
+
+                g.setColor(couleurRemplissage);
+                g.fillPolygon(triangle);
+
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setStroke(new BasicStroke(2f));
+                g2d.setColor(couleurContour);
+                g2d.drawPolygon(triangle);
+                g2d.dispose();
+
+            } else if ("TRIANGULAIRE_TRONQUEE".equals(typeForme)) {
+                double retraitImage = imageLargeur * 0.25;
+                int retraitScreen = (int) Math.round((retraitImage / imageVue.getWidth()) * context.largeur);
+
+                int xBase      = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+                int yBase      = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+                int xBaseDroit = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
+                int yBasBas    = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
+
+                int hautGX = xBase + retraitScreen;
+                int hautGY = yBase;
+                int hautDX = xBaseDroit - retraitScreen;
+                int hautDY = yBase;
+                int basGX  = xBase;
+                int basGY  = yBasBas;
+                int basDX  = xBaseDroit;
+                int basDY  = yBasBas;
+
+                java.awt.Polygon trapeze = new java.awt.Polygon();
+                trapeze.addPoint(hautGX, hautGY);
+                trapeze.addPoint(hautDX, hautDY);
+                trapeze.addPoint(basDX, basDY);
+                trapeze.addPoint(basGX, basGY);
+
+                g.setColor(couleurRemplissage);
+                g.fillPolygon(trapeze);
+
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setStroke(new BasicStroke(2f));
+                g2d.setColor(couleurContour);
+                g2d.drawPolygon(trapeze);
+                g2d.dispose();
             }
-
-            g.setColor(couleurRemplissage);
-            g.fillRect(screenX, screenY, screenLargeur, screenHauteur);
-
-            Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setStroke(new BasicStroke(2f));
-            g2d.setColor(couleurContour);
-            g2d.drawRect(screenX, screenY, screenLargeur, screenHauteur);
-            g2d.dispose();
         }
     }
 
