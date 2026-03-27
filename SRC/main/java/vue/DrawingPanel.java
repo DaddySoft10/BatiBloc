@@ -1,5 +1,6 @@
 package vue;
 
+import dto.ZoneDTO;
 import vue.drawer.AfficheurBatiment;
 
 import javax.swing.BorderFactory;
@@ -15,6 +16,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
+import java.util.List;
 
 public class DrawingPanel extends JPanel {
     private static final double FACTEUR_ZOOM = 1.12;
@@ -299,6 +301,10 @@ public class DrawingPanel extends JPanel {
             );
         }
 
+        if (imageVue != null && context != null) {
+            this.dessinerZones(g, imageVue, context);
+        }
+
         if (this.afficheur != null) {
             int nombreZones = this.mainWindow.getController().getNombreZonesFacadeCourante();
             this.afficheur.drawBatiment(g, nombreZones);
@@ -335,6 +341,64 @@ public class DrawingPanel extends JPanel {
                 );
                 g2d.dispose();
             }
+        }
+    }
+
+    private void dessinerZones(Graphics g, BufferedImage imageVue, RenderContext context) {
+        if (g == null || imageVue == null || context == null) {
+            return;
+        }
+
+        List<ZoneDTO> zones = this.mainWindow.getController().getZones();
+
+        for (ZoneDTO zone : zones) {
+            if (!"RECTANGULAIRE".equals(zone.getTypeForme())) {
+                continue;
+            }
+
+            Color couleurRemplissage;
+            Color couleurContour;
+            switch (zone.getTypeZone()) {
+                case "BLOC":
+                    couleurRemplissage = new Color(70, 130, 180, 80);
+                    couleurContour = new Color(70, 130, 180, 255);
+                    break;
+                case "CLASSIQUE":
+                    couleurRemplissage = new Color(34, 139, 34, 80);
+                    couleurContour = new Color(34, 139, 34, 255);
+                    break;
+                case "OUVERTURE":
+                    couleurRemplissage = new Color(255, 140, 0, 80);
+                    couleurContour = new Color(255, 140, 0, 255);
+                    break;
+                default:
+                    couleurRemplissage = new Color(128, 128, 128, 80);
+                    couleurContour = new Color(128, 128, 128, 255);
+                    break;
+            }
+
+            double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
+            double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
+            double imageLargeur = zone.getLargeur();
+            double imageHauteur = zone.getHauteur();
+
+            int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+            int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+            int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
+            int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
+
+            if (screenLargeur <= 0 || screenHauteur <= 0) {
+                continue;
+            }
+
+            g.setColor(couleurRemplissage);
+            g.fillRect(screenX, screenY, screenLargeur, screenHauteur);
+
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setStroke(new BasicStroke(2f));
+            g2d.setColor(couleurContour);
+            g2d.drawRect(screenX, screenY, screenLargeur, screenHauteur);
+            g2d.dispose();
         }
     }
 
