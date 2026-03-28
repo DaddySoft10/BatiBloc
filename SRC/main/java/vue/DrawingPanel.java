@@ -304,6 +304,7 @@ public class DrawingPanel extends JPanel {
         if (imageVue != null && context != null) {
             this.dessinerZones(g, imageVue, context);
             this.dessinerZoneSelectionnee(g, imageVue, context);
+            this.dessinerBlocsSimulation(g, imageVue, context);
         }
 
         if (this.afficheur != null) {
@@ -527,6 +528,94 @@ public class DrawingPanel extends JPanel {
         g2dL.setColor(Color.RED);
         g2dL.drawString(label, screenX, screenY + screenHauteur + 15);
         g2dL.dispose();
+    }
+
+    private void dessinerBlocsSimulation(Graphics g, BufferedImage imageVue, RenderContext context) {
+        if (g == null || imageVue == null || context == null) {
+            return;
+        }
+
+        List<dto.ZoneDTO> zones = this.mainWindow.getController().getZones();
+        if (zones == null || zones.isEmpty()) {
+            return;
+        }
+
+        double metresParPixel = this.mainWindow.getController().getMetresParPixel();
+        if (metresParPixel <= 0) {
+            return;
+        }
+
+        for (dto.ZoneDTO zone : zones) {
+            if (!zone.getTypeZone().equals("BLOC")) {
+                continue;
+            }
+
+            double imageX       = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
+            double imageY       = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
+            double imageLargeur = zone.getLargeur() / metresParPixel;
+            double imageHauteur = zone.getHauteur() / metresParPixel;
+
+            int screenX       = (int) Math.round(context.x + (imageX / imageVue.getWidth())          * context.largeur);
+            int screenY       = (int) Math.round(context.y + (imageY / imageVue.getHeight())         * context.hauteur);
+            int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth())  * context.largeur);
+            int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
+
+            if (screenLargeur <= 0 || screenHauteur <= 0) {
+                continue;
+            }
+
+            double poucesParMetre     = 39.3701;
+            double largeurZonePouces  = zone.getLargeur() * poucesParMetre;
+            double hauteurZonePouces  = zone.getHauteur() * poucesParMetre;
+
+            double pixelsParPouceX = (screenLargeur > 0 && largeurZonePouces > 0)
+                    ? screenLargeur / largeurZonePouces : 1.0;
+            double pixelsParPouceY = (screenHauteur > 0 && hauteurZonePouces > 0)
+                    ? screenHauteur / hauteurZonePouces : 1.0;
+
+            double blocLargeurPx = 12.0 * pixelsParPouceX;
+            double blocHauteurPx =  8.0 * pixelsParPouceY;
+
+            if (blocLargeurPx < 2 || blocHauteurPx < 2) {
+                continue;
+            }
+
+            int nbColonnes = (int) Math.max(1, Math.floor(largeurZonePouces / 12.0));
+            int nbRangees  = (int) Math.max(1, Math.floor(hauteurZonePouces /  8.0));
+            int nbBlocs    = nbColonnes * nbRangees;
+
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setStroke(new BasicStroke(0.8f));
+            g2d.setColor(new Color(255, 255, 255, 160));
+
+            for (int col = 1; col < nbColonnes; col++) {
+                int xLigne = screenX + (int) Math.round(col * blocLargeurPx);
+                g2d.drawLine(xLigne, screenY, xLigne, screenY + screenHauteur);
+            }
+
+            for (int row = 1; row < nbRangees; row++) {
+                int yLigne = screenY + (int) Math.round(row * blocHauteurPx);
+                g2d.drawLine(screenX, yLigne, screenX + screenLargeur, yLigne);
+            }
+
+            g2d.dispose();
+
+            String texteBlocs = nbBlocs + " blocs";
+            Graphics2D g2dT = (Graphics2D) g.create();
+            g2dT.setFont(new Font("SansSerif", Font.BOLD, 12));
+            g2dT.setColor(Color.WHITE);
+
+            java.awt.FontMetrics fm = g2dT.getFontMetrics();
+            int texteLargeur = fm.stringWidth(texteBlocs);
+            int texteX = screenX + (screenLargeur - texteLargeur) / 2;
+            int texteY = screenY + (screenHauteur / 2);
+
+            g2dT.setColor(Color.BLACK);
+            g2dT.drawString(texteBlocs, texteX + 1, texteY + 1);
+            g2dT.setColor(Color.WHITE);
+            g2dT.drawString(texteBlocs, texteX, texteY);
+            g2dT.dispose();
+        }
     }
 
     private static class PointImage {
