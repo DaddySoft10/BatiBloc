@@ -303,6 +303,7 @@ public class DrawingPanel extends JPanel {
 
         if (imageVue != null && context != null) {
             this.dessinerZones(g, imageVue, context);
+            this.dessinerZoneSelectionnee(g, imageVue, context);
         }
 
         if (this.afficheur != null) {
@@ -460,6 +461,72 @@ public class DrawingPanel extends JPanel {
                 g2d.dispose();
             }
         }
+    }
+
+    private void dessinerZoneSelectionnee(Graphics g, BufferedImage imageVue, RenderContext context) {
+        if (g == null || imageVue == null || context == null) {
+            return;
+        }
+
+        // NOTE: Controller.getIndexZoneSelectionnee() n'existe pas encore.
+        // La valeur par defaut -1 est utilisee jusqu'a ce que ce getter soit ajoute au Controller.
+        int idx = -1;
+        // int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
+        if (idx < 0) {
+            return;
+        }
+
+        List<ZoneDTO> zones = this.mainWindow.getController().getZones();
+        if (idx >= zones.size()) {
+            return;
+        }
+        ZoneDTO zone = zones.get(idx);
+
+        double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
+        double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
+        double imageLargeur = zone.getLargeur();
+        double imageHauteur = zone.getHauteur();
+
+        int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+        int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+        int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
+        int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
+
+        Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setStroke(new BasicStroke(3f));
+        g2d.setColor(Color.RED);
+        g2d.drawRect(screenX, screenY, screenLargeur, screenHauteur);
+        g2d.dispose();
+
+        int taille = 8;
+        int[][] poignees = {
+            {screenX,                      screenY},
+            {screenX + screenLargeur,      screenY},
+            {screenX,                      screenY + screenHauteur},
+            {screenX + screenLargeur,      screenY + screenHauteur},
+            {screenX + screenLargeur / 2,  screenY},
+            {screenX + screenLargeur / 2,  screenY + screenHauteur},
+            {screenX,                      screenY + screenHauteur / 2},
+            {screenX + screenLargeur,      screenY + screenHauteur / 2}
+        };
+        for (int[] poignee : poignees) {
+            int px = poignee[0] - taille / 2;
+            int py = poignee[1] - taille / 2;
+            Graphics2D g2dP = (Graphics2D) g.create();
+            g2dP.setColor(Color.WHITE);
+            g2dP.fillRect(px, py, taille, taille);
+            g2dP.setStroke(new BasicStroke(1.5f));
+            g2dP.setColor(Color.RED);
+            g2dP.drawRect(px, py, taille, taille);
+            g2dP.dispose();
+        }
+
+        String label = zone.getTypeZone() + " - " + zone.getTypeForme();
+        Graphics2D g2dL = (Graphics2D) g.create();
+        g2dL.setFont(new Font("SansSerif", Font.BOLD, 12));
+        g2dL.setColor(Color.RED);
+        g2dL.drawString(label, screenX, screenY + screenHauteur + 15);
+        g2dL.dispose();
     }
 
     private static class PointImage {
