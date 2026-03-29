@@ -41,19 +41,84 @@ public final class SimulateurPlacement {
         return blocsPlaces;
     }
 
-    private static ResultatRangee placerBlocsDansRangee(double y, double largeurRangee, double longueurDepart) {
+    public static List<ZoneBloc.BlocPlace> simulerZoneTriangulaire(double largeurBasePouces, double hauteurPouces) {
+        if (largeurBasePouces <= 0.0) {
+            throw new IllegalArgumentException("La largeur de base doit etre superieure a 0.");
+        }
+        if (hauteurPouces <= 0.0) {
+            throw new IllegalArgumentException("La hauteur doit etre superieure a 0.");
+        }
+
         List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
-        double x = 0.0;
+        int nombreRangees = (int) Math.ceil(hauteurPouces / BLOC_HAUTEUR);
+        double restantPourProchaineRangee = 0.0;
+
+        for (int indexRangee = 0; indexRangee < nombreRangees; indexRangee++) {
+            double y = indexRangee * BLOC_HAUTEUR;
+            double ratioVertical = y / hauteurPouces;
+            double largeurRangee = normaliserLongueur(largeurBasePouces * (1.0 - ratioVertical));
+            double offsetX = normaliserLongueur((largeurBasePouces - largeurRangee) / 2.0);
+
+            ResultatRangee resultatRangee = placerBlocsDansRangee(y, largeurRangee, offsetX, restantPourProchaineRangee);
+            blocsPlaces.addAll(resultatRangee.getBlocs());
+            restantPourProchaineRangee = resultatRangee.getRestantPourProchaineRangee();
+        }
+
+        return blocsPlaces;
+    }
+
+    public static List<ZoneBloc.BlocPlace> simulerZoneTriangulaireTronquee(double largeurBasePouces,
+                                                                            double largeurSommetPouces,
+                                                                            double hauteurPouces) {
+        if (largeurBasePouces <= 0.0) {
+            throw new IllegalArgumentException("La largeur de base doit etre superieure a 0.");
+        }
+        if (largeurSommetPouces <= 0.0) {
+            throw new IllegalArgumentException("La largeur du sommet doit etre superieure a 0.");
+        }
+        if (hauteurPouces <= 0.0) {
+            throw new IllegalArgumentException("La hauteur doit etre superieure a 0.");
+        }
+        if (largeurSommetPouces - largeurBasePouces > EPSILON) {
+            throw new IllegalArgumentException("La largeur du sommet ne peut pas exceder la largeur de base.");
+        }
+
+        List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
+        int nombreRangees = (int) Math.ceil(hauteurPouces / BLOC_HAUTEUR);
+        double restantPourProchaineRangee = 0.0;
+
+        for (int indexRangee = 0; indexRangee < nombreRangees; indexRangee++) {
+            double y = indexRangee * BLOC_HAUTEUR;
+            double ratioVertical = y / hauteurPouces;
+            double largeurRangee = normaliserLongueur(largeurBasePouces
+                    + ((largeurSommetPouces - largeurBasePouces) * ratioVertical));
+            double offsetX = normaliserLongueur((largeurBasePouces - largeurRangee) / 2.0);
+
+            ResultatRangee resultatRangee = placerBlocsDansRangee(y, largeurRangee, offsetX, restantPourProchaineRangee);
+            blocsPlaces.addAll(resultatRangee.getBlocs());
+            restantPourProchaineRangee = resultatRangee.getRestantPourProchaineRangee();
+        }
+
+        return blocsPlaces;
+    }
+
+    private static ResultatRangee placerBlocsDansRangee(double y, double largeurRangee, double longueurDepart) {
+        return placerBlocsDansRangee(y, largeurRangee, 0.0, longueurDepart);
+    }
+
+    private static ResultatRangee placerBlocsDansRangee(double y, double largeurRangee, double offsetX, double longueurDepart) {
+        List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
+        double x = offsetX;
         double largeurRestante = largeurRangee;
         double restantPourProchaineRangee = 0.0;
 
         if (estStrictementPositive(longueurDepart)) {
             if (longueurDepart - largeurRangee > EPSILON) {
-                return creerRangeeRedistribuee(y, largeurRangee);
+                return creerRangeeRedistribuee(y, largeurRangee, offsetX);
             }
 
             if (longueurDepart + EPSILON < MIN_RETAILLE) {
-                return creerRangeeRedistribuee(y, largeurRangee);
+                return creerRangeeRedistribuee(y, largeurRangee, offsetX);
             }
 
             ajouterBloc(blocsPlaces, x, y, longueurDepart);
@@ -73,7 +138,7 @@ public final class SimulateurPlacement {
         }
 
         if (largeurRestante + EPSILON < MIN_RETAILLE) {
-            return creerRangeeRedistribuee(y, largeurRangee);
+            return creerRangeeRedistribuee(y, largeurRangee, offsetX);
         }
 
         ajouterBloc(blocsPlaces, x, y, largeurRestante);
@@ -82,8 +147,12 @@ public final class SimulateurPlacement {
     }
 
     private static ResultatRangee creerRangeeRedistribuee(double y, double largeurRangee) {
+        return creerRangeeRedistribuee(y, largeurRangee, 0.0);
+    }
+
+    private static ResultatRangee creerRangeeRedistribuee(double y, double largeurRangee, double offsetX) {
         List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
-        double x = 0.0;
+        double x = offsetX;
         int nombreBlocsCentraux = (int) Math.floor((largeurRangee - (2.0 * MIN_RETAILLE) + EPSILON) / BLOC_LARGEUR);
 
         if (nombreBlocsCentraux < 0) {
