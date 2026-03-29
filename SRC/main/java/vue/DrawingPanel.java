@@ -150,6 +150,38 @@ public class DrawingPanel extends JPanel {
         ajusterZoom(facteur, centreX, centreY, image);
     }
 
+    public double[] convertirEcranVersMonde(int xEcran, int yEcran) {
+        BufferedImage image = this.mainWindow.getController().getImageVueCourante();
+        RenderContext context = this.calculerContexteRendu(image);
+        if (image == null || context == null
+                || context.largeur <= 0 || context.hauteur <= 0) {
+            return null;
+        }
+        double ratioX = (xEcran - context.x) / context.largeur;
+        double ratioY = (yEcran - context.y) / context.hauteur;
+        double mondeX = ratioX * image.getWidth();
+        double mondeY = ratioY * image.getHeight();
+        return new double[]{mondeX, mondeY};
+    }
+
+    public int[] convertirMondeVersEcran(double xMonde, double yMonde) {
+        BufferedImage image = this.mainWindow.getController().getImageVueCourante();
+        RenderContext context = this.calculerContexteRendu(image);
+        if (image == null || context == null
+                || image.getWidth() <= 0 || image.getHeight() <= 0) {
+            return null;
+        }
+        int xEcran = (int) Math.round(context.x + (xMonde / image.getWidth())  * context.largeur);
+        int yEcran = (int) Math.round(context.y + (yMonde / image.getHeight()) * context.hauteur);
+        return new int[]{xEcran, yEcran};
+    }
+
+    public void pannerVue(int deltaX, int deltaY) {
+        this.offsetX += deltaX;
+        this.offsetY += deltaY;
+        this.repaint();
+    }
+
     private void gererZoomMolette(MouseWheelEvent e) {
         BufferedImage image = this.mainWindow.getController().getImageVueCourante();
         if (image == null) {
@@ -344,6 +376,14 @@ public class DrawingPanel extends JPanel {
                 g2d.dispose();
             }
         }
+
+        // Afficher info zoom en bas à gauche
+        String infoZoom = String.format("Zoom: %.0f%%", this.zoomFactor * 100);
+        g.setColor(new Color(50, 50, 50, 180));
+        g.fillRoundRect(8, this.getHeight() - 28, 90, 20, 6, 6);
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        g.drawString(infoZoom, 14, this.getHeight() - 13);
     }
 
     private void dessinerZones(Graphics g, BufferedImage imageVue, RenderContext context) {
