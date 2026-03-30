@@ -1,18 +1,36 @@
 package domaine;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ZoneBloc extends Zone {
     private static final String TYPE_ZONE = "BLOC";
+    private List<BlocPlace> blocsSimules;
 
     public ZoneBloc() {
         super();
+        this.blocsSimules = new ArrayList<>();
     }
 
     public ZoneBloc(double x, double y, double largeur, double hauteur, TypeForme typeForme) {
         super(x, y, largeur, hauteur, typeForme);
+        this.blocsSimules = new ArrayList<>();
     }
 
     public String getTypeZone() {
         return TYPE_ZONE;
+    }
+
+    public List<BlocPlace> getBlocsSimules() {
+        return List.copyOf(this.blocsSimules);
+    }
+
+    public void setBlocsSimules(List<BlocPlace> blocsSimules) {
+        if (blocsSimules == null) {
+            this.blocsSimules = new ArrayList<>();
+            return;
+        }
+        this.blocsSimules = new ArrayList<>(blocsSimules);
     }
 
     public static class BlocPlace {
