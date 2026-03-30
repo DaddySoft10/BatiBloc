@@ -18,12 +18,15 @@ import java.util.Locale;
 
 public class Controller {
     private static final double ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL = 1.0;
+    private static final double METRES_VERS_POUCES = 39.3701;
+    private static final double RATIO_LARGEUR_SOMMET_TRIANGLE_TRONQUE = 0.5;
 
     private final Batiment batiment;
     private int indexVueCourante;
     private int indexZoneSelectionnee;
     private List<BufferedImage> imagesVues;
     private double metresParPixel;
+    private int nombreTotalBlocs;
 
     public Controller() {
         this.batiment = new Batiment();
@@ -31,6 +34,7 @@ public class Controller {
         this.indexZoneSelectionnee = -1;
         this.imagesVues = new ArrayList<>();
         this.metresParPixel = ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL;
+        this.nombreTotalBlocs = 0;
     }
 
     public int importerPlanPdf(String cheminFichier) throws IOException {
@@ -205,8 +209,8 @@ public class Controller {
 
     public String simulerPlacement(double largeurMetres, double hauteurMetres) {
         //  (1 metre = 39.3701 pouces)
-        double largeurPouces = largeurMetres * 39.3701;
-        double hauteurPouces = hauteurMetres * 39.3701;
+        double largeurPouces = convertirMetresEnPouces(largeurMetres);
+        double hauteurPouces = convertirMetresEnPouces(hauteurMetres);
 
         // Constantes du domaine
         final double BLOC_L = 12.0;
@@ -256,6 +260,7 @@ public class Controller {
         Zone nouvelleZone = this.creerZone(xReel, yReel, largeur, hauteur, typeForme, typeZone);
         this.batiment.ajouterZone(nouvelleZone);
         this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
+        this.invaliderSimulationBlocs();
     }
 
     public void supprimerZone(int index) {
@@ -265,12 +270,14 @@ public class Controller {
         } else if (this.indexZoneSelectionnee > index) {
             this.indexZoneSelectionnee -= 1;
         }
+        this.invaliderSimulationBlocs();
     }
 
     public void modifierZone(int index, double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
         Zone zoneModifiee = this.creerZone(x, y, largeur, hauteur, typeForme, typeZone);
         this.batiment.getFacadeCourante().modifierZone(index, zoneModifiee);
         this.indexZoneSelectionnee = index;
+        this.invaliderSimulationBlocs();
     }
 
     public List<ZoneDTO> getZones() {
@@ -294,6 +301,26 @@ public class Controller {
         return -1;
     }
 
+    public void lancerSimulationToutesLesZones() {
+        int total = 0;
+
+        for (Zone zone : this.batiment.getFacadeCourante().getZones()) {
+            if (!(zone instanceof ZoneBloc zoneBloc)) {
+                continue;
+            }
+
+            List<ZoneBloc.BlocPlace> blocsSimules = this.lancerSimulationZone(zoneBloc);
+            zoneBloc.setBlocsSimules(blocsSimules);
+            total += blocsSimules.size();
+        }
+
+        this.nombreTotalBlocs = total;
+    }
+
+    public int getNombreTotalBlocs() {
+        return this.nombreTotalBlocs;
+    }
+
     private Rectangle normaliserZoneDansImage(Rectangle zoneImage, BufferedImage imageSource) {
         int x = Math.max(0, zoneImage.x);
         int y = Math.max(0, zoneImage.y);
@@ -314,6 +341,28 @@ public class Controller {
         g2d.drawImage(imageSource, 0, 0, null);
         g2d.dispose();
         return copie;
+    }
+
+    private List<ZoneBloc.BlocPlace> lancerSimulationZone(ZoneBloc zone) {
+        if (zone == null) {
+            throw new IllegalArgumentException("La zone de blocs ne peut pas etre nulle.");
+        }
+
+        double largeurPouces = convertirMetresEnPouces(zone.getLargeur());
+        double hauteurPouces = convertirMetresEnPouces(zone.getHauteur());
+
+        return switch (zone.getTypeForme()) {
+            case RECTANGULAIRE -> SimulateurPlacement.simulerZoneRectangulaire(largeurPouces, hauteurPouces);
+            case TRIANGULAIRE -> SimulateurPlacement.simulerZoneTriangulaire(largeurPouces, hauteurPouces);
+            case TRIANGULAIRE_TRONQUEE -> {
+                double largeurSommetPouces = largeurPouces * RATIO_LARGEUR_SOMMET_TRIANGLE_TRONQUE;
+                yield SimulateurPlacement.simulerZoneTriangulaireTronquee(
+                        largeurPouces,
+                        largeurSommetPouces,
+                        hauteurPouces
+                );
+            }
+        };
     }
 
     private Zone creerZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
@@ -361,5 +410,19 @@ public class Controller {
             throw new IllegalArgumentException("La valeur ne peut pas etre vide.");
         }
         return valeur.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private double convertirMetresEnPouces(double valeurMetres) {
+        return valeurMetres * METRES_VERS_POUCES;
+    }
+
+    private void invaliderSimulationBlocs() {
+        this.nombreTotalBlocs = 0;
+
+        for (Zone zone : this.batiment.getFacadeCourante().getZones()) {
+            if (zone instanceof ZoneBloc zoneBloc) {
+                zoneBloc.setBlocsSimules(List.of());
+            }
+        }
     }
 }
