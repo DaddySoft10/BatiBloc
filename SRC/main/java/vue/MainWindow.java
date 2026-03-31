@@ -196,6 +196,18 @@ public class MainWindow extends JFrame {
 
         JButton btnCalculer = new JButton("Calculer l'estimation");
         btnCalculer.addActionListener(e -> this.afficherEstimation());
+        ButtonGroup groupeModes = new ButtonGroup();
+        JToggleButton btnSelection = new JToggleButton("Selection");
+        btnSelection.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.SELECTION));
+        JToggleButton btnCreation = new JToggleButton("Creation");
+        btnCreation.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.CREATION));
+        JToggleButton btnRognage = new JToggleButton("Rognage");
+        btnRognage.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.ROGNAGE));
+        groupeModes.add(btnSelection);
+        groupeModes.add(btnCreation);
+        groupeModes.add(btnRognage);
+        btnCreation.setSelected(true);
+
         JButton btnZoomPlus = new JButton("Zoom +");
         btnZoomPlus.addActionListener(e -> this.drawingPanel.zoomerDepuisCentre(1.15));
         JButton btnZoomMoins = new JButton("Zoom -");
@@ -204,6 +216,10 @@ public class MainWindow extends JFrame {
         btnRecentrer.addActionListener(e -> this.drawingPanel.reinitialiserVue());
 
         topToolBar.add(btnCalculer);
+        topToolBar.addSeparator();
+        topToolBar.add(btnSelection);
+        topToolBar.add(btnCreation);
+        topToolBar.add(btnRognage);
         topToolBar.addSeparator();
         topToolBar.add(btnZoomPlus);
         topToolBar.add(btnZoomMoins);
@@ -325,11 +341,6 @@ public class MainWindow extends JFrame {
 
         leftSideBar.add(Box.createVerticalStrut(10));
         leftSideBar.add(new JLabel("Rognage :"));
-        leftSideBar.add(Box.createVerticalStrut(6));
-        JToggleButton btnModeRognage = new JToggleButton("Mode rognage");
-        btnModeRognage.setMaximumSize(new Dimension(260, 35));
-        btnModeRognage.addActionListener(e -> this.drawingPanel.setModeRognageActif(btnModeRognage.isSelected()));
-        leftSideBar.add(btnModeRognage);
         leftSideBar.add(Box.createVerticalStrut(6));
         JButton btnRognerVue = new JButton("Rogner vue courante");
         btnRognerVue.setMaximumSize(new Dimension(260, 35));

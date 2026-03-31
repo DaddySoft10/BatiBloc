@@ -27,7 +27,7 @@ public class DrawingPanel extends JPanel {
     private double zoomFactor;
     private double offsetX;
     private double offsetY;
-    private boolean modeRognageActif;
+    private ModeInteraction modeActuel;
     private boolean rognageEnCours;
     private int xDepartImage;
     private int yDepartImage;
@@ -43,7 +43,7 @@ public class DrawingPanel extends JPanel {
         this.zoomFactor = 1.0;
         this.offsetX = 0.0;
         this.offsetY = 0.0;
-        this.modeRognageActif = false;
+        this.modeActuel = ModeInteraction.CREATION;
         this.rognageEnCours = false;
         this.selectionImage = null;
         this.selectionAffichee = null;
@@ -51,7 +51,7 @@ public class DrawingPanel extends JPanel {
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (!modeRognageActif) {
+                if (!estModeRognage()) {
                     return;
                 }
                 BufferedImage image = mainWindow.getController().getImageVueCourante();
@@ -77,7 +77,7 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (!modeRognageActif || !rognageEnCours) {
+                if (!estModeRognage() || !rognageEnCours) {
                     return;
                 }
                 rognageEnCours = false;
@@ -86,7 +86,7 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (modeRognageActif || e.getButton() != MouseEvent.BUTTON1) {
+                if (e.getButton() != MouseEvent.BUTTON1 || modeActuel != ModeInteraction.CREATION) {
                     return;
                 }
                 gererClicSouris(e.getX(), e.getY());
@@ -96,7 +96,7 @@ public class DrawingPanel extends JPanel {
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (modeRognageActif && rognageEnCours) {
+                if (estModeRognage() && rognageEnCours) {
                     mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
                 }
             }
@@ -105,14 +105,26 @@ public class DrawingPanel extends JPanel {
         this.addMouseWheelListener(this::gererZoomMolette);
     }
 
-    public void setModeRognageActif(boolean actif) {
-        this.modeRognageActif = actif;
+    public void setModeActuel(ModeInteraction mode) {
+        if (mode == null) {
+            return;
+        }
+        boolean quitteModeRognage = this.modeActuel == ModeInteraction.ROGNAGE && mode != ModeInteraction.ROGNAGE;
+        this.modeActuel = mode;
         this.rognageEnCours = false;
-        if (!actif) {
+        if (quitteModeRognage) {
             this.selectionImage = null;
             this.selectionAffichee = null;
         }
         this.repaint();
+    }
+
+    public ModeInteraction getModeActuel() {
+        return this.modeActuel;
+    }
+
+    public void setModeRognageActif(boolean actif) {
+        this.setModeActuel(actif ? ModeInteraction.ROGNAGE : ModeInteraction.CREATION);
     }
 
     public Rectangle getSelectionRognageImage() {
@@ -351,7 +363,7 @@ public class DrawingPanel extends JPanel {
             g.drawString("Affichage: " + vueCourante, 12, 22);
         }
 
-        if (this.modeRognageActif) {
+        if (this.estModeRognage()) {
             g.setColor(new Color(30, 144, 255));
             g.setFont(new Font("SansSerif", Font.BOLD, 13));
             g.drawString("Mode rognage actif: glisser pour selectionner une zone", 50, 98);
@@ -384,6 +396,10 @@ public class DrawingPanel extends JPanel {
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         g.drawString(infoZoom, 14, this.getHeight() - 13);
+    }
+
+    private boolean estModeRognage() {
+        return this.modeActuel == ModeInteraction.ROGNAGE;
     }
 
     private void dessinerZones(Graphics g, BufferedImage imageVue, RenderContext context) {
