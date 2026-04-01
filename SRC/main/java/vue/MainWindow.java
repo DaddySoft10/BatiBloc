@@ -1,6 +1,7 @@
 package vue;
 
 import domaine.Controller;
+import dto.ZoneDTO;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -91,6 +92,24 @@ public class MainWindow extends JFrame {
             return this.typeGroup.getSelection().getActionCommand();
         }
         return "Classique";
+    }
+
+    public void rafraichirPanneauDroit() {
+        ZoneDTO zoneSelectionnee = this.controller.getZoneSelectionnee();
+        if (zoneSelectionnee == null) {
+            this.txtForme.setText("");
+            this.txtLargeur.setText("0.0000");
+            this.txtHauteur.setText("0.0000");
+            this.txtPosX.setText("0.0000");
+            this.txtPosY.setText("0.0000");
+            return;
+        }
+
+        this.txtForme.setText(formaterTypeForme(zoneSelectionnee.getTypeForme()));
+        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getLargeur()));
+        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getHauteur()));
+        this.txtPosX.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getX()));
+        this.txtPosY.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getY()));
     }
 
     private void initComponents() {
@@ -430,6 +449,19 @@ public class MainWindow extends JFrame {
             return;
         }
         this.lblVueCourante.setText("Vue courante: " + nomVue);
+    }
+
+    private String formaterTypeForme(String typeForme) {
+        if (typeForme == null || typeForme.isBlank()) {
+            return "";
+        }
+
+        return switch (typeForme) {
+            case "RECTANGULAIRE" -> "Rectangle";
+            case "TRIANGULAIRE" -> "Triangle";
+            case "TRIANGULAIRE_TRONQUEE" -> "Triangle tronque";
+            default -> typeForme;
+        };
     }
 
     private void supprimerVueSelectionnee() {

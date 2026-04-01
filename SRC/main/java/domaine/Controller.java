@@ -288,6 +288,23 @@ public class Controller {
         return zones;
     }
 
+    public int getIndexZoneSelectionnee() {
+        return this.indexZoneSelectionnee;
+    }
+
+    public ZoneDTO getZoneSelectionnee() {
+        if (this.indexZoneSelectionnee < 0) {
+            return null;
+        }
+
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (this.indexZoneSelectionnee >= zones.size()) {
+            return null;
+        }
+
+        return this.convertirEnZoneDTO(zones.get(this.indexZoneSelectionnee));
+    }
+
     public int selectionnerZone(double x, double y) {
         List<Zone> zones = this.batiment.getFacadeCourante().getZones();
         for (int i = zones.size() - 1; i >= 0; i--) {
@@ -299,6 +316,10 @@ public class Controller {
 
         this.indexZoneSelectionnee = -1;
         return -1;
+    }
+
+    public void deselectionnerToutesLesZones() {
+        this.indexZoneSelectionnee = -1;
     }
 
     public void lancerSimulationToutesLesZones() {

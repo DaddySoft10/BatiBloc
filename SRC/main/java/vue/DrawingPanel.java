@@ -100,6 +100,11 @@ public class DrawingPanel extends JPanel {
                 rognageEnCours = false;
                 mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
             }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                gererClicSelection(e);
+            }
         });
 
         this.addMouseMotionListener(new MouseMotionAdapter() {
@@ -375,6 +380,33 @@ public class DrawingPanel extends JPanel {
         this.pointCreationDepartImage = null;
         this.pointCreationCourantImage = null;
         this.creationAffichee = null;
+    }
+
+    private void gererClicSelection(MouseEvent e) {
+        if (e.getButton() != MouseEvent.BUTTON1
+                || e.getClickCount() != 1
+                || this.modeActuel != ModeInteraction.SELECTION
+                || this.creationEnCours
+                || this.rognageEnCours) {
+            return;
+        }
+
+        double[] coordonneesMonde = this.convertirEcranVersMonde(e.getX(), e.getY());
+        if (coordonneesMonde == null) {
+            return;
+        }
+
+        int selectionAvant = this.mainWindow.getController().getIndexZoneSelectionnee();
+        int selectionApres = this.mainWindow.getController().selectionnerZone(coordonneesMonde[0], coordonneesMonde[1]);
+        if (selectionApres < 0) {
+            this.mainWindow.getController().deselectionnerToutesLesZones();
+        }
+
+        if (selectionAvant != this.mainWindow.getController().getIndexZoneSelectionnee()) {
+            this.mainWindow.rafraichirPanneauDroit();
+        }
+
+        this.repaint();
     }
 
     private RenderContext calculerContexteRendu(BufferedImage imageVue) {
@@ -654,10 +686,7 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        // NOTE: Controller.getIndexZoneSelectionnee() n'existe pas encore.
-        // La valeur par defaut -1 est utilisee jusqu'a ce que ce getter soit ajoute au Controller.
-        int idx = -1;
-        // int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
+        int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
         if (idx < 0) {
             return;
         }
