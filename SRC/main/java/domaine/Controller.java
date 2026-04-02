@@ -2,7 +2,6 @@ package domaine;
 
 import dto.PlanDTO;
 import dto.ZoneDTO;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -51,7 +50,7 @@ public class Controller {
             throw new IllegalArgumentException("Le fichier selectionne doit etre un PDF.");
         }
 
-        try (PDDocument document = Loader.loadPDF(fichier)) {
+        try (PDDocument document = PDDocument.load(fichier)) {
             int nombrePages = document.getNumberOfPages();
             List<String> vues = new ArrayList<>();
             List<BufferedImage> nouvellesImagesVues = new ArrayList<>();
@@ -320,6 +319,27 @@ public class Controller {
 
     public void deselectionnerToutesLesZones() {
         this.indexZoneSelectionnee = -1;
+    }
+
+    public void deplacerZone(int index, double dx, double dy) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) {
+            return;
+        }
+
+        Zone zone = zones.get(index);
+        zone.setX(zone.getX() + dx);
+        zone.setY(zone.getY() + dy);
+        this.indexZoneSelectionnee = index;
+        this.invaliderSimulationBlocs();
+    }
+
+    public boolean zoneContientPoint(int index, double x, double y) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) {
+            return false;
+        }
+        return zones.get(index).contientPoint(x, y);
     }
 
     public void lancerSimulationToutesLesZones() {

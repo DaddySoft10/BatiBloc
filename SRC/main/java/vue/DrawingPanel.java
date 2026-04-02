@@ -38,6 +38,10 @@ public class DrawingPanel extends JPanel {
     private PointImage pointCreationDepartImage;
     private PointImage pointCreationCourantImage;
     private Rectangle creationAffichee;
+    private boolean deplacementZoneEnCours;
+    private int indexZoneDeplacement;
+    private double dernierXMonde;
+    private double dernierYMonde;
 
     public DrawingPanel(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
@@ -56,10 +60,17 @@ public class DrawingPanel extends JPanel {
         this.pointCreationDepartImage = null;
         this.pointCreationCourantImage = null;
         this.creationAffichee = null;
+        this.deplacementZoneEnCours = false;
+        this.indexZoneDeplacement = -1;
+        this.dernierXMonde = 0.0;
+        this.dernierYMonde = 0.0;
 
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.SELECTION) {
+                    demarrerDeplacementZone(e.getX(), e.getY());
+                }
                 if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.CREATION) {
                     demarrerCreationZone(e.getX(), e.getY());
                     return;
@@ -90,6 +101,9 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (deplacementZoneEnCours) {
+                    terminerDeplacementZone();
+                }
                 if (modeActuel == ModeInteraction.CREATION && creationEnCours) {
                     terminerCreationZone(e.getX(), e.getY());
                     return;
@@ -110,6 +124,10 @@ public class DrawingPanel extends JPanel {
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
+                if (deplacementZoneEnCours) {
+                    deplacerZoneDepuisSouris(e.getX(), e.getY());
+                    return;
+                }
                 if (modeActuel == ModeInteraction.CREATION && creationEnCours) {
                     mettreAJourCreationDepuisSouris(e.getX(), e.getY());
                     return;
@@ -131,6 +149,7 @@ public class DrawingPanel extends JPanel {
         boolean quitteModeCreation = this.modeActuel == ModeInteraction.CREATION && mode != ModeInteraction.CREATION;
         this.modeActuel = mode;
         this.rognageEnCours = false;
+        this.annulerDeplacementZone();
         if (quitteModeRognage) {
             this.selectionImage = null;
             this.selectionAffichee = null;
@@ -380,6 +399,59 @@ public class DrawingPanel extends JPanel {
         this.pointCreationDepartImage = null;
         this.pointCreationCourantImage = null;
         this.creationAffichee = null;
+    }
+
+    private void demarrerDeplacementZone(int xPanel, int yPanel) {
+        if (this.creationEnCours || this.rognageEnCours || this.modeActuel != ModeInteraction.SELECTION) {
+            return;
+        }
+
+        int indexSelectionne = this.mainWindow.getController().getIndexZoneSelectionnee();
+        if (indexSelectionne < 0) {
+            return;
+        }
+
+        double[] coordonneesMonde = this.convertirEcranVersMonde(xPanel, yPanel);
+        if (coordonneesMonde == null
+                || !this.mainWindow.getController().zoneContientPoint(indexSelectionne, coordonneesMonde[0], coordonneesMonde[1])) {
+            return;
+        }
+
+        this.deplacementZoneEnCours = true;
+        this.indexZoneDeplacement = indexSelectionne;
+        this.dernierXMonde = coordonneesMonde[0];
+        this.dernierYMonde = coordonneesMonde[1];
+    }
+
+    private void deplacerZoneDepuisSouris(int xPanel, int yPanel) {
+        double[] coordonneesMonde = this.convertirEcranVersMonde(xPanel, yPanel);
+        if (coordonneesMonde == null) {
+            return;
+        }
+
+        double dx = coordonneesMonde[0] - this.dernierXMonde;
+        double dy = coordonneesMonde[1] - this.dernierYMonde;
+        if (dx == 0.0 && dy == 0.0) {
+            return;
+        }
+
+        this.mainWindow.getController().deplacerZone(this.indexZoneDeplacement, dx, dy);
+        this.dernierXMonde = coordonneesMonde[0];
+        this.dernierYMonde = coordonneesMonde[1];
+        this.mainWindow.rafraichirPanneauDroit();
+        this.repaint();
+    }
+
+    private void terminerDeplacementZone() {
+        this.annulerDeplacementZone();
+        this.repaint();
+    }
+
+    private void annulerDeplacementZone() {
+        this.deplacementZoneEnCours = false;
+        this.indexZoneDeplacement = -1;
+        this.dernierXMonde = 0.0;
+        this.dernierYMonde = 0.0;
     }
 
     private void gererClicSelection(MouseEvent e) {
