@@ -12,6 +12,7 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.ActionEvent;
 import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +34,7 @@ public class MainWindow extends JFrame {
     private DefaultListModel<String> listeVuesModel;
     private JList<String> listeVues;
     private JLabel lblVueCourante;
+    private JButton btnSupprimerZone;
 
     public MainWindow() {
         this.controller = new Controller();
@@ -48,6 +50,7 @@ public class MainWindow extends JFrame {
         this.initTopToolBar();
 
         this.drawingPanel = new DrawingPanel(this);
+        this.installerRaccourciSuppressionZone();
 
         JPanel leftPanel = this.buildLeftSideBar();
         JPanel rightPanel = this.buildRightSideBar();
@@ -102,6 +105,9 @@ public class MainWindow extends JFrame {
             this.txtHauteur.setText("0.0000");
             this.txtPosX.setText("0.0000");
             this.txtPosY.setText("0.0000");
+            if (this.btnSupprimerZone != null) {
+                this.btnSupprimerZone.setEnabled(false);
+            }
             return;
         }
 
@@ -110,6 +116,9 @@ public class MainWindow extends JFrame {
         this.txtHauteur.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getHauteur()));
         this.txtPosX.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getX()));
         this.txtPosY.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getY()));
+        if (this.btnSupprimerZone != null) {
+            this.btnSupprimerZone.setEnabled(true);
+        }
     }
 
     private void initComponents() {
@@ -403,10 +412,12 @@ public class MainWindow extends JFrame {
         gbc.gridy = 5;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(20, 5, 5, 5);
-        JButton btnSupprimer = new JButton("Supprimer la zone");
-        btnSupprimer.setBackground(new Color(220, 53, 69));
-        btnSupprimer.setForeground(Color.WHITE);
-        rightSideBar.add(btnSupprimer, gbc);
+        this.btnSupprimerZone = new JButton("Supprimer la zone");
+        this.btnSupprimerZone.setBackground(new Color(220, 53, 69));
+        this.btnSupprimerZone.setForeground(Color.WHITE);
+        this.btnSupprimerZone.setEnabled(false);
+        this.btnSupprimerZone.addActionListener(e -> this.supprimerZoneSelectionnee());
+        rightSideBar.add(this.btnSupprimerZone, gbc);
 
         gbc.gridy = 6;
         gbc.weighty = 1.0;
@@ -451,6 +462,20 @@ public class MainWindow extends JFrame {
         this.lblVueCourante.setText("Vue courante: " + nomVue);
     }
 
+    private void installerRaccourciSuppressionZone() {
+        JRootPane rootPane = this.getRootPane();
+        InputMap inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = rootPane.getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "supprimer-zone-selectionnee");
+        actionMap.put("supprimer-zone-selectionnee", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                supprimerZoneSelectionnee();
+            }
+        });
+    }
+
     private String formaterTypeForme(String typeForme) {
         if (typeForme == null || typeForme.isBlank()) {
             return "";
@@ -462,6 +487,17 @@ public class MainWindow extends JFrame {
             case "TRIANGULAIRE_TRONQUEE" -> "Triangle tronque";
             default -> typeForme;
         };
+    }
+
+    private void supprimerZoneSelectionnee() {
+        int indexSelectionne = this.controller.getIndexZoneSelectionnee();
+        if (indexSelectionne < 0) {
+            return;
+        }
+
+        this.controller.supprimerZoneSelectionnee();
+        this.rafraichirPanneauDroit();
+        this.drawingPanel.repaint();
     }
 
     private void supprimerVueSelectionnee() {

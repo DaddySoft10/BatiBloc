@@ -263,6 +263,11 @@ public class Controller {
     }
 
     public void supprimerZone(int index) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) {
+            return;
+        }
+
         this.batiment.getFacadeCourante().supprimerZone(index);
         if (this.indexZoneSelectionnee == index) {
             this.indexZoneSelectionnee = -1;
@@ -332,6 +337,10 @@ public class Controller {
         zone.setY(zone.getY() + dy);
         this.indexZoneSelectionnee = index;
         this.invaliderSimulationBlocs();
+    }
+
+    public void supprimerZoneSelectionnee() {
+        this.supprimerZone(this.indexZoneSelectionnee);
     }
 
     public boolean zoneContientPoint(int index, double x, double y) {
