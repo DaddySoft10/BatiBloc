@@ -21,18 +21,27 @@ import java.util.List;
 public class DrawingPanel extends JPanel {
     private static final double FACTEUR_ZOOM = 1.12;
     private static final double ZOOM_MIN = 1.0e-6;
+    private static final int SEUIL_CREATION_MIN_PX = 5;
 
     private final MainWindow mainWindow;
     private final AfficheurBatiment afficheur;
     private double zoomFactor;
     private double offsetX;
     private double offsetY;
-    private boolean modeRognageActif;
+    private ModeInteraction modeActuel;
     private boolean rognageEnCours;
     private int xDepartImage;
     private int yDepartImage;
     private Rectangle selectionImage;
     private Rectangle selectionAffichee;
+    private boolean creationEnCours;
+    private PointImage pointCreationDepartImage;
+    private PointImage pointCreationCourantImage;
+    private Rectangle creationAffichee;
+    private boolean deplacementZoneEnCours;
+    private int indexZoneDeplacement;
+    private double dernierXMonde;
+    private double dernierYMonde;
 
     public DrawingPanel(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
@@ -43,15 +52,30 @@ public class DrawingPanel extends JPanel {
         this.zoomFactor = 1.0;
         this.offsetX = 0.0;
         this.offsetY = 0.0;
-        this.modeRognageActif = false;
+        this.modeActuel = ModeInteraction.CREATION;
         this.rognageEnCours = false;
         this.selectionImage = null;
         this.selectionAffichee = null;
+        this.creationEnCours = false;
+        this.pointCreationDepartImage = null;
+        this.pointCreationCourantImage = null;
+        this.creationAffichee = null;
+        this.deplacementZoneEnCours = false;
+        this.indexZoneDeplacement = -1;
+        this.dernierXMonde = 0.0;
+        this.dernierYMonde = 0.0;
 
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                if (!modeRognageActif) {
+                if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.SELECTION) {
+                    demarrerDeplacementZone(e.getX(), e.getY());
+                }
+                if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.CREATION) {
+                    demarrerCreationZone(e.getX(), e.getY());
+                    return;
+                }
+                if (!estModeRognage()) {
                     return;
                 }
                 BufferedImage image = mainWindow.getController().getImageVueCourante();
@@ -77,7 +101,14 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (!modeRognageActif || !rognageEnCours) {
+                if (deplacementZoneEnCours) {
+                    terminerDeplacementZone();
+                }
+                if (modeActuel == ModeInteraction.CREATION && creationEnCours) {
+                    terminerCreationZone(e.getX(), e.getY());
+                    return;
+                }
+                if (!estModeRognage() || !rognageEnCours) {
                     return;
                 }
                 rognageEnCours = false;
@@ -86,17 +117,22 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (modeRognageActif || e.getButton() != MouseEvent.BUTTON1) {
-                    return;
-                }
-                gererClicSouris(e.getX(), e.getY());
+                gererClicSelection(e);
             }
         });
 
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (modeRognageActif && rognageEnCours) {
+                if (deplacementZoneEnCours) {
+                    deplacerZoneDepuisSouris(e.getX(), e.getY());
+                    return;
+                }
+                if (modeActuel == ModeInteraction.CREATION && creationEnCours) {
+                    mettreAJourCreationDepuisSouris(e.getX(), e.getY());
+                    return;
+                }
+                if (estModeRognage() && rognageEnCours) {
                     mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
                 }
             }
@@ -105,14 +141,31 @@ public class DrawingPanel extends JPanel {
         this.addMouseWheelListener(this::gererZoomMolette);
     }
 
-    public void setModeRognageActif(boolean actif) {
-        this.modeRognageActif = actif;
+    public void setModeActuel(ModeInteraction mode) {
+        if (mode == null) {
+            return;
+        }
+        boolean quitteModeRognage = this.modeActuel == ModeInteraction.ROGNAGE && mode != ModeInteraction.ROGNAGE;
+        boolean quitteModeCreation = this.modeActuel == ModeInteraction.CREATION && mode != ModeInteraction.CREATION;
+        this.modeActuel = mode;
         this.rognageEnCours = false;
-        if (!actif) {
+        this.annulerDeplacementZone();
+        if (quitteModeRognage) {
             this.selectionImage = null;
             this.selectionAffichee = null;
         }
+        if (quitteModeCreation) {
+            this.annulerCreationZone();
+        }
         this.repaint();
+    }
+
+    public ModeInteraction getModeActuel() {
+        return this.modeActuel;
+    }
+
+    public void setModeRognageActif(boolean actif) {
+        this.setModeActuel(actif ? ModeInteraction.ROGNAGE : ModeInteraction.CREATION);
     }
 
     public Rectangle getSelectionRognageImage() {
@@ -213,7 +266,7 @@ public class DrawingPanel extends JPanel {
         this.repaint();
     }
 
-    private void gererClicSouris(int xPixels, int yPixels) {
+    private void demarrerCreationZone(int xPixels, int yPixels) {
         BufferedImage image = this.mainWindow.getController().getImageVueCourante();
         RenderContext context = this.calculerContexteRendu(image);
         PointImage pointImage = this.convertirPointPanelVersImage(xPixels, yPixels, image, context, false);
@@ -221,12 +274,10 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        double largeur = this.mainWindow.getLargeurSaisie();
-        double hauteur = this.mainWindow.getHauteurSaisie();
-        String forme = this.mainWindow.getFormeSaisie();
-        String typeZone = this.mainWindow.getTypeZoneSelectionne();
-
-        this.mainWindow.getController().ajouterZone(pointImage.x, pointImage.y, largeur, hauteur, forme, typeZone);
+        this.creationEnCours = true;
+        this.pointCreationDepartImage = pointImage;
+        this.pointCreationCourantImage = pointImage;
+        this.creationAffichee = new Rectangle(xPixels, yPixels, 1, 1);
         this.repaint();
     }
 
@@ -257,6 +308,175 @@ public class DrawingPanel extends JPanel {
                 Math.max(1, xPanelMax - xPanelMin),
                 Math.max(1, yPanelMax - yPanelMin)
         );
+
+        this.repaint();
+    }
+
+    private void mettreAJourCreationDepuisSouris(int xPanel, int yPanel) {
+        BufferedImage image = this.mainWindow.getController().getImageVueCourante();
+        if (image == null || this.pointCreationDepartImage == null) {
+            return;
+        }
+        RenderContext context = this.calculerContexteRendu(image);
+        PointImage pointActuel = this.convertirPointPanelVersImage(xPanel, yPanel, image, context, true);
+        if (pointActuel == null) {
+            return;
+        }
+
+        this.pointCreationCourantImage = pointActuel;
+        this.creationAffichee = this.construireRectangleAffiche(
+                context,
+                image,
+                this.pointCreationDepartImage,
+                this.pointCreationCourantImage
+        );
+        this.repaint();
+    }
+
+    private void terminerCreationZone(int xPanel, int yPanel) {
+        this.mettreAJourCreationDepuisSouris(xPanel, yPanel);
+
+        Rectangle rectangleCreation = this.creationAffichee;
+        PointImage pointDepart = this.pointCreationDepartImage;
+        PointImage pointCourant = this.pointCreationCourantImage;
+
+        if (rectangleCreation != null
+                && pointDepart != null
+                && pointCourant != null
+                && rectangleCreation.width > SEUIL_CREATION_MIN_PX
+                && rectangleCreation.height > SEUIL_CREATION_MIN_PX) {
+            int xMin = Math.min(pointDepart.x, pointCourant.x);
+            int yMin = Math.min(pointDepart.y, pointCourant.y);
+            int largeur = Math.abs(pointCourant.x - pointDepart.x);
+            int hauteur = Math.abs(pointCourant.y - pointDepart.y);
+
+            if (largeur > 0 && hauteur > 0) {
+                this.mainWindow.getController().ajouterZone(
+                        xMin,
+                        yMin,
+                        largeur,
+                        hauteur,
+                        "RECTANGULAIRE",
+                        this.mainWindow.getTypeZoneSelectionne()
+                );
+            }
+        }
+
+        this.annulerCreationZone();
+        this.repaint();
+    }
+
+    private Rectangle construireRectangleAffiche(
+            RenderContext context,
+            BufferedImage image,
+            PointImage pointDepart,
+            PointImage pointCourant
+    ) {
+        if (context == null || image == null || pointDepart == null || pointCourant == null) {
+            return null;
+        }
+
+        int xMin = Math.min(pointDepart.x, pointCourant.x);
+        int yMin = Math.min(pointDepart.y, pointCourant.y);
+        int xMax = Math.max(pointDepart.x, pointCourant.x);
+        int yMax = Math.max(pointDepart.y, pointCourant.y);
+
+        int xPanelMin = (int) Math.round(context.x + ((double) xMin / image.getWidth()) * context.largeur);
+        int yPanelMin = (int) Math.round(context.y + ((double) yMin / image.getHeight()) * context.hauteur);
+        int xPanelMax = (int) Math.round(context.x + ((double) xMax / image.getWidth()) * context.largeur);
+        int yPanelMax = (int) Math.round(context.y + ((double) yMax / image.getHeight()) * context.hauteur);
+
+        return new Rectangle(
+                xPanelMin,
+                yPanelMin,
+                Math.max(1, xPanelMax - xPanelMin),
+                Math.max(1, yPanelMax - yPanelMin)
+        );
+    }
+
+    private void annulerCreationZone() {
+        this.creationEnCours = false;
+        this.pointCreationDepartImage = null;
+        this.pointCreationCourantImage = null;
+        this.creationAffichee = null;
+    }
+
+    private void demarrerDeplacementZone(int xPanel, int yPanel) {
+        if (this.creationEnCours || this.rognageEnCours || this.modeActuel != ModeInteraction.SELECTION) {
+            return;
+        }
+
+        int indexSelectionne = this.mainWindow.getController().getIndexZoneSelectionnee();
+        if (indexSelectionne < 0) {
+            return;
+        }
+
+        double[] coordonneesMonde = this.convertirEcranVersMonde(xPanel, yPanel);
+        if (coordonneesMonde == null
+                || !this.mainWindow.getController().zoneContientPoint(indexSelectionne, coordonneesMonde[0], coordonneesMonde[1])) {
+            return;
+        }
+
+        this.deplacementZoneEnCours = true;
+        this.indexZoneDeplacement = indexSelectionne;
+        this.dernierXMonde = coordonneesMonde[0];
+        this.dernierYMonde = coordonneesMonde[1];
+    }
+
+    private void deplacerZoneDepuisSouris(int xPanel, int yPanel) {
+        double[] coordonneesMonde = this.convertirEcranVersMonde(xPanel, yPanel);
+        if (coordonneesMonde == null) {
+            return;
+        }
+
+        double dx = coordonneesMonde[0] - this.dernierXMonde;
+        double dy = coordonneesMonde[1] - this.dernierYMonde;
+        if (dx == 0.0 && dy == 0.0) {
+            return;
+        }
+
+        this.mainWindow.getController().deplacerZone(this.indexZoneDeplacement, dx, dy);
+        this.dernierXMonde = coordonneesMonde[0];
+        this.dernierYMonde = coordonneesMonde[1];
+        this.mainWindow.rafraichirPanneauDroit();
+        this.repaint();
+    }
+
+    private void terminerDeplacementZone() {
+        this.annulerDeplacementZone();
+        this.repaint();
+    }
+
+    private void annulerDeplacementZone() {
+        this.deplacementZoneEnCours = false;
+        this.indexZoneDeplacement = -1;
+        this.dernierXMonde = 0.0;
+        this.dernierYMonde = 0.0;
+    }
+
+    private void gererClicSelection(MouseEvent e) {
+        if (e.getButton() != MouseEvent.BUTTON1
+                || e.getClickCount() != 1
+                || this.modeActuel != ModeInteraction.SELECTION
+                || this.creationEnCours
+                || this.rognageEnCours) {
+            return;
+        }
+
+        double[] coordonneesMonde = this.convertirEcranVersMonde(e.getX(), e.getY());
+        if (coordonneesMonde == null) {
+            return;
+        }
+
+        int selectionAvant = this.mainWindow.getController().getIndexZoneSelectionnee();
+        int selectionApres = this.mainWindow.getController().selectionnerZone(coordonneesMonde[0], coordonneesMonde[1]);
+        if (selectionApres < 0) {
+            this.mainWindow.getController().deselectionnerToutesLesZones();
+        }
+
+        if (selectionAvant != this.mainWindow.getController().getIndexZoneSelectionnee()) {
+            this.mainWindow.rafraichirPanneauDroit();
+        }
 
         this.repaint();
     }
@@ -351,7 +571,7 @@ public class DrawingPanel extends JPanel {
             g.drawString("Affichage: " + vueCourante, 12, 22);
         }
 
-        if (this.modeRognageActif) {
+        if (this.estModeRognage()) {
             g.setColor(new Color(30, 144, 255));
             g.setFont(new Font("SansSerif", Font.BOLD, 13));
             g.drawString("Mode rognage actif: glisser pour selectionner une zone", 50, 98);
@@ -378,12 +598,41 @@ public class DrawingPanel extends JPanel {
         }
 
         // Afficher info zoom en bas à gauche
+        this.dessinerCreationEnCours(g);
         String infoZoom = String.format("Zoom: %.0f%%", this.zoomFactor * 100);
         g.setColor(new Color(50, 50, 50, 180));
         g.fillRoundRect(8, this.getHeight() - 28, 90, 20, 6, 6);
         g.setColor(Color.WHITE);
         g.setFont(new Font("SansSerif", Font.PLAIN, 11));
         g.drawString(infoZoom, 14, this.getHeight() - 13);
+    }
+
+    private void dessinerCreationEnCours(Graphics g) {
+        if (!this.creationEnCours || this.creationAffichee == null) {
+            return;
+        }
+
+        Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setColor(new Color(34, 139, 34, 70));
+        g2d.fillRect(
+                this.creationAffichee.x,
+                this.creationAffichee.y,
+                this.creationAffichee.width,
+                this.creationAffichee.height
+        );
+        g2d.setStroke(new BasicStroke(2f));
+        g2d.setColor(new Color(34, 139, 34));
+        g2d.drawRect(
+                this.creationAffichee.x,
+                this.creationAffichee.y,
+                this.creationAffichee.width,
+                this.creationAffichee.height
+        );
+        g2d.dispose();
+    }
+
+    private boolean estModeRognage() {
+        return this.modeActuel == ModeInteraction.ROGNAGE;
     }
 
     private void dessinerZones(Graphics g, BufferedImage imageVue, RenderContext context) {
@@ -509,10 +758,7 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        // NOTE: Controller.getIndexZoneSelectionnee() n'existe pas encore.
-        // La valeur par defaut -1 est utilisee jusqu'a ce que ce getter soit ajoute au Controller.
-        int idx = -1;
-        // int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
+        int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
         if (idx < 0) {
             return;
         }

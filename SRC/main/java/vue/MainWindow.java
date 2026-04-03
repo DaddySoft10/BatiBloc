@@ -1,6 +1,7 @@
 package vue;
 
 import domaine.Controller;
+import dto.ZoneDTO;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -11,6 +12,7 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.ActionEvent;
 import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +34,7 @@ public class MainWindow extends JFrame {
     private DefaultListModel<String> listeVuesModel;
     private JList<String> listeVues;
     private JLabel lblVueCourante;
+    private JButton btnSupprimerZone;
 
     public MainWindow() {
         this.controller = new Controller();
@@ -47,6 +50,7 @@ public class MainWindow extends JFrame {
         this.initTopToolBar();
 
         this.drawingPanel = new DrawingPanel(this);
+        this.installerRaccourciSuppressionZone();
 
         JPanel leftPanel = this.buildLeftSideBar();
         JPanel rightPanel = this.buildRightSideBar();
@@ -91,6 +95,30 @@ public class MainWindow extends JFrame {
             return this.typeGroup.getSelection().getActionCommand();
         }
         return "Classique";
+    }
+
+    public void rafraichirPanneauDroit() {
+        ZoneDTO zoneSelectionnee = this.controller.getZoneSelectionnee();
+        if (zoneSelectionnee == null) {
+            this.txtForme.setText("");
+            this.txtLargeur.setText("0.0000");
+            this.txtHauteur.setText("0.0000");
+            this.txtPosX.setText("0.0000");
+            this.txtPosY.setText("0.0000");
+            if (this.btnSupprimerZone != null) {
+                this.btnSupprimerZone.setEnabled(false);
+            }
+            return;
+        }
+
+        this.txtForme.setText(formaterTypeForme(zoneSelectionnee.getTypeForme()));
+        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getLargeur()));
+        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getHauteur()));
+        this.txtPosX.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getX()));
+        this.txtPosY.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getY()));
+        if (this.btnSupprimerZone != null) {
+            this.btnSupprimerZone.setEnabled(true);
+        }
     }
 
     private void initComponents() {
@@ -196,6 +224,18 @@ public class MainWindow extends JFrame {
 
         JButton btnCalculer = new JButton("Calculer l'estimation");
         btnCalculer.addActionListener(e -> this.afficherEstimation());
+        ButtonGroup groupeModes = new ButtonGroup();
+        JToggleButton btnSelection = new JToggleButton("Selection");
+        btnSelection.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.SELECTION));
+        JToggleButton btnCreation = new JToggleButton("Creation");
+        btnCreation.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.CREATION));
+        JToggleButton btnRognage = new JToggleButton("Rognage");
+        btnRognage.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.ROGNAGE));
+        groupeModes.add(btnSelection);
+        groupeModes.add(btnCreation);
+        groupeModes.add(btnRognage);
+        btnCreation.setSelected(true);
+
         JButton btnZoomPlus = new JButton("Zoom +");
         btnZoomPlus.addActionListener(e -> this.drawingPanel.zoomerDepuisCentre(1.15));
         JButton btnZoomMoins = new JButton("Zoom -");
@@ -204,6 +244,10 @@ public class MainWindow extends JFrame {
         btnRecentrer.addActionListener(e -> this.drawingPanel.reinitialiserVue());
 
         topToolBar.add(btnCalculer);
+        topToolBar.addSeparator();
+        topToolBar.add(btnSelection);
+        topToolBar.add(btnCreation);
+        topToolBar.add(btnRognage);
         topToolBar.addSeparator();
         topToolBar.add(btnZoomPlus);
         topToolBar.add(btnZoomMoins);
@@ -326,11 +370,6 @@ public class MainWindow extends JFrame {
         leftSideBar.add(Box.createVerticalStrut(10));
         leftSideBar.add(new JLabel("Rognage :"));
         leftSideBar.add(Box.createVerticalStrut(6));
-        JToggleButton btnModeRognage = new JToggleButton("Mode rognage");
-        btnModeRognage.setMaximumSize(new Dimension(260, 35));
-        btnModeRognage.addActionListener(e -> this.drawingPanel.setModeRognageActif(btnModeRognage.isSelected()));
-        leftSideBar.add(btnModeRognage);
-        leftSideBar.add(Box.createVerticalStrut(6));
         JButton btnRognerVue = new JButton("Rogner vue courante");
         btnRognerVue.setMaximumSize(new Dimension(260, 35));
         btnRognerVue.addActionListener(e -> this.rognerVueCouranteDepuisSelection());
@@ -373,10 +412,12 @@ public class MainWindow extends JFrame {
         gbc.gridy = 5;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(20, 5, 5, 5);
-        JButton btnSupprimer = new JButton("Supprimer la zone");
-        btnSupprimer.setBackground(new Color(220, 53, 69));
-        btnSupprimer.setForeground(Color.WHITE);
-        rightSideBar.add(btnSupprimer, gbc);
+        this.btnSupprimerZone = new JButton("Supprimer la zone");
+        this.btnSupprimerZone.setBackground(new Color(220, 53, 69));
+        this.btnSupprimerZone.setForeground(Color.WHITE);
+        this.btnSupprimerZone.setEnabled(false);
+        this.btnSupprimerZone.addActionListener(e -> this.supprimerZoneSelectionnee());
+        rightSideBar.add(this.btnSupprimerZone, gbc);
 
         gbc.gridy = 6;
         gbc.weighty = 1.0;
@@ -419,6 +460,44 @@ public class MainWindow extends JFrame {
             return;
         }
         this.lblVueCourante.setText("Vue courante: " + nomVue);
+    }
+
+    private void installerRaccourciSuppressionZone() {
+        JRootPane rootPane = this.getRootPane();
+        InputMap inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = rootPane.getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "supprimer-zone-selectionnee");
+        actionMap.put("supprimer-zone-selectionnee", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                supprimerZoneSelectionnee();
+            }
+        });
+    }
+
+    private String formaterTypeForme(String typeForme) {
+        if (typeForme == null || typeForme.isBlank()) {
+            return "";
+        }
+
+        return switch (typeForme) {
+            case "RECTANGULAIRE" -> "Rectangle";
+            case "TRIANGULAIRE" -> "Triangle";
+            case "TRIANGULAIRE_TRONQUEE" -> "Triangle tronque";
+            default -> typeForme;
+        };
+    }
+
+    private void supprimerZoneSelectionnee() {
+        int indexSelectionne = this.controller.getIndexZoneSelectionnee();
+        if (indexSelectionne < 0) {
+            return;
+        }
+
+        this.controller.supprimerZoneSelectionnee();
+        this.rafraichirPanneauDroit();
+        this.drawingPanel.repaint();
     }
 
     private void supprimerVueSelectionnee() {
