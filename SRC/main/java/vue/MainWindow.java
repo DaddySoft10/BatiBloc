@@ -129,10 +129,10 @@ public class MainWindow extends JFrame {
         this.txtHauteur = this.createNumberField();
 
         this.txtPosX = this.createNumberField();
-        this.txtPosX.setEditable(false);
+        this.txtPosX.setEditable(true);
 
         this.txtPosY = this.createNumberField();
-        this.txtPosY.setEditable(false);
+        this.txtPosY.setEditable(true);
         this.txtNomNouvelleVue = new JTextField("Vue rognee");
 
         this.listeVuesModel = new DefaultListModel<>();
@@ -412,6 +412,12 @@ public class MainWindow extends JFrame {
         gbc.gridy = 5;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(20, 5, 5, 5);
+
+        JButton btnAppliquerModification = new JButton("Appliquer les modifications");
+        btnAppliquerModification.addActionListener(e -> this.appliquerModificationZone());
+        rightSideBar.add(btnAppliquerModification, gbc);
+
+        gbc.gridy = 6;
         this.btnSupprimerZone = new JButton("Supprimer la zone");
         this.btnSupprimerZone.setBackground(new Color(220, 53, 69));
         this.btnSupprimerZone.setForeground(Color.WHITE);
@@ -602,4 +608,91 @@ public class MainWindow extends JFrame {
         }
         SwingUtilities.invokeLater(() -> new MainWindow().setVisible(true));
     }
+
+    public void chargerZoneSelectionneeDansPanneau() {
+        dto.ZoneDTO zone = this.controller.getZoneSelectionnee();
+
+        if (zone == null) {
+            this.txtForme.setText("Rectangle");
+            this.txtLargeur.setText("0.0000");
+            this.txtHauteur.setText("0.0000");
+            this.txtPosX.setText("0.0000");
+            this.txtPosY.setText("0.0000");
+            return;
+        }
+
+        this.txtPosX.setText(String.format(java.util.Locale.US, "%.4f", zone.getX()));
+        this.txtPosY.setText(String.format(java.util.Locale.US, "%.4f", zone.getY()));
+        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.4f", zone.getLargeur()));
+        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.4f", zone.getHauteur()));
+
+        switch (zone.getTypeForme()) {
+            case "RECTANGULAIRE" -> this.txtForme.setText("Rectangle");
+            case "TRIANGULAIRE" -> this.txtForme.setText("Triangle");
+            case "TRIANGULAIRE_TRONQUEE" -> this.txtForme.setText("Triangle tronque");
+            default -> this.txtForme.setText("Rectangle");
+        }
+
+
+        String typeZone = zone.getTypeZone();
+        java.util.Enumeration<AbstractButton> boutons = this.typeGroup.getElements();
+        while (boutons.hasMoreElements()) {
+            AbstractButton bouton = boutons.nextElement();
+            String action = bouton.getActionCommand();
+
+            if ("BLOC".equals(typeZone) && "Blocs".equals(action)) {
+                bouton.setSelected(true);
+                break;
+            }
+            if ("CLASSIQUE".equals(typeZone) && "Classique".equals(action)) {
+                bouton.setSelected(true);
+                break;
+            }
+            if ("OUVERTURE".equals(typeZone) && "Ouverture".equals(action)) {
+                bouton.setSelected(true);
+                break;
+            }
+        }
+    }
+
+    private void appliquerModificationZone() {
+        int index = this.controller.getIndexZoneSelectionnee();
+        if (index < 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Aucune zone n'est selectionnee.",
+                    "Modification",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            double x = Double.parseDouble(this.txtPosX.getText().replace(',', '.'));
+            double y = Double.parseDouble(this.txtPosY.getText().replace(',', '.'));
+            double largeur = Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
+            double hauteur = Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
+
+            if (largeur <= 0 || hauteur <= 0) {
+                throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
+            }
+
+            String forme = this.getFormeSaisie();
+            String typeZone = this.getTypeZoneSelectionne();
+
+            this.controller.modifierZone(index, x, y, largeur, hauteur, forme, typeZone);
+            this.chargerZoneSelectionneeDansPanneau();
+            this.drawingPanel.repaint();
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Valeurs invalides dans le panneau d'edition.",
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    ex.getMessage(),
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
 }

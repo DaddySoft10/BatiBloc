@@ -359,6 +359,12 @@ public class DrawingPanel extends JPanel {
                         "RECTANGULAIRE",
                         this.mainWindow.getTypeZoneSelectionne()
                 );
+                this.mainWindow.getController().selectionnerZone(
+                        xMin + largeur / 2.0,
+                        yMin + hauteur / 2.0
+                );
+
+                this.mainWindow.rafraichirPanneauDroit();
             }
         }
 
