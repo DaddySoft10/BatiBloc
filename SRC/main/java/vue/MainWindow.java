@@ -126,7 +126,10 @@ public class MainWindow extends JFrame {
         this.txtForme.setEditable(false);
 
         this.txtLargeur = this.createNumberField();
+        this.txtLargeur.setEditable(true);
+
         this.txtHauteur = this.createNumberField();
+        this.txtHauteur.setEditable(true);
 
         this.txtPosX = this.createNumberField();
         this.txtPosX.setEditable(true);
@@ -417,6 +420,10 @@ public class MainWindow extends JFrame {
         btnAppliquerModification.addActionListener(e -> this.appliquerModificationZone());
         rightSideBar.add(btnAppliquerModification, gbc);
 
+        JButton btnCreerZone = new JButton("Creer zone");
+        btnCreerZone.addActionListener(e -> this.creerZoneDepuisPanneau());
+        rightSideBar.add(btnCreerZone, gbc);
+
         gbc.gridy = 6;
         this.btnSupprimerZone = new JButton("Supprimer la zone");
         this.btnSupprimerZone.setBackground(new Color(220, 53, 69));
@@ -652,6 +659,38 @@ public class MainWindow extends JFrame {
                 bouton.setSelected(true);
                 break;
             }
+        }
+    }
+
+    private void creerZoneDepuisPanneau() {
+        try {
+            double x = Double.parseDouble(this.txtPosX.getText().replace(',', '.'));
+            double y = Double.parseDouble(this.txtPosY.getText().replace(',', '.'));
+            double largeur = Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
+            double hauteur = Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
+
+            if (largeur <= 0 || hauteur <= 0) {
+                throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
+            }
+
+            String forme = this.getFormeSaisie();
+            String typeZone = this.getTypeZoneSelectionne();
+
+            this.controller.ajouterZone(x, y, largeur, hauteur, forme, typeZone);
+
+            this.chargerZoneSelectionneeDansPanneau();
+            this.drawingPanel.repaint();
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Valeurs invalides dans le panneau d'edition.",
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    ex.getMessage(),
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 
