@@ -28,6 +28,7 @@ public class MainWindow extends JFrame {
     private JTextField txtPosX;
     private JTextField txtPosY;
     private JTextField txtNomNouvelleVue;
+    private JTextField txtEchelle;
 
     // Attribut pour boutons radio
     private ButtonGroup typeGroup;
@@ -99,6 +100,7 @@ public class MainWindow extends JFrame {
 
     public void rafraichirPanneauDroit() {
         ZoneDTO zoneSelectionnee = this.controller.getZoneSelectionnee();
+        this.mettreAJourChampEchelle();
         if (zoneSelectionnee == null) {
             this.txtForme.setText("");
             this.txtLargeur.setText("0.0000");
@@ -126,13 +128,21 @@ public class MainWindow extends JFrame {
         this.txtForme.setEditable(false);
 
         this.txtLargeur = this.createNumberField();
+        this.txtLargeur.setEditable(true);
+
         this.txtHauteur = this.createNumberField();
+        this.txtHauteur.setEditable(true);
 
         this.txtPosX = this.createNumberField();
-        this.txtPosX.setEditable(false);
+        this.txtPosX.setEditable(true);
 
         this.txtPosY = this.createNumberField();
-        this.txtPosY.setEditable(false);
+        this.txtPosY.setEditable(true);
+
+        this.txtEchelle = this.createNumberField();
+        this.txtEchelle.setEditable(true);
+        this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", this.controller.getMetresParPixel()));
+
         this.txtNomNouvelleVue = new JTextField("Vue rognee");
 
         this.listeVuesModel = new DefaultListModel<>();
@@ -237,11 +247,22 @@ public class MainWindow extends JFrame {
         btnCreation.setSelected(true);
 
         JButton btnZoomPlus = new JButton("Zoom +");
-        btnZoomPlus.addActionListener(e -> this.drawingPanel.zoomerDepuisCentre(1.15));
+        btnZoomPlus.addActionListener(e -> {
+            this.drawingPanel.zoomerDepuisCentre(1.15);
+            this.mettreAJourChampEchelle();
+        });
+
         JButton btnZoomMoins = new JButton("Zoom -");
-        btnZoomMoins.addActionListener(e -> this.drawingPanel.zoomerDepuisCentre(1.0 / 1.15));
+        btnZoomMoins.addActionListener(e -> {
+            this.drawingPanel.zoomerDepuisCentre(1.0 / 1.15);
+            this.mettreAJourChampEchelle();
+        });
+
         JButton btnRecentrer = new JButton("Recentrer");
-        btnRecentrer.addActionListener(e -> this.drawingPanel.reinitialiserVue());
+        btnRecentrer.addActionListener(e -> {
+            this.drawingPanel.reinitialiserVue();
+            this.mettreAJourChampEchelle();
+        });
 
         topToolBar.add(btnCalculer);
         topToolBar.addSeparator();
@@ -407,19 +428,36 @@ public class MainWindow extends JFrame {
         this.addFormField(rightSideBar, gbc, 2, "Hauteur (m) :", this.txtHauteur);
         this.addFormField(rightSideBar, gbc, 3, "Position X (m) :", this.txtPosX);
         this.addFormField(rightSideBar, gbc, 4, "Position Y (m) :", this.txtPosY);
+        this.addFormField(rightSideBar, gbc, 5, "Echelle (m / pixel) :", this.txtEchelle);
 
         gbc.gridx = 0;
-        gbc.gridy = 5;
+        gbc.gridy = 6;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(20, 5, 5, 5);
+
+        JButton btnAppliquerEchelle = new JButton("Appliquer l'echelle");
+        btnAppliquerEchelle.addActionListener(e -> this.appliquerEchelleIndependante());
+        rightSideBar.add(btnAppliquerEchelle, gbc);
+
+        gbc.gridy = 7;
+        JButton btnCreerZone = new JButton("Creer zone");
+        btnCreerZone.addActionListener(e -> this.creerZoneDepuisPanneau());
+        rightSideBar.add(btnCreerZone, gbc);
+
+        gbc.gridy = 8;
+        JButton btnAppliquerModification = new JButton("Appliquer les modifications");
+        btnAppliquerModification.addActionListener(e -> this.appliquerModificationZone());
+        rightSideBar.add(btnAppliquerModification, gbc);
+
+        gbc.gridy = 9;
         this.btnSupprimerZone = new JButton("Supprimer la zone");
         this.btnSupprimerZone.setBackground(new Color(220, 53, 69));
-        this.btnSupprimerZone.setForeground(Color.WHITE);
+        this.btnSupprimerZone.setForeground(Color.RED);
         this.btnSupprimerZone.setEnabled(false);
         this.btnSupprimerZone.addActionListener(e -> this.supprimerZoneSelectionnee());
         rightSideBar.add(this.btnSupprimerZone, gbc);
 
-        gbc.gridy = 6;
+        gbc.gridy = 10;
         gbc.weighty = 1.0;
         rightSideBar.add(Box.createGlue(), gbc);
 
@@ -602,4 +640,174 @@ public class MainWindow extends JFrame {
         }
         SwingUtilities.invokeLater(() -> new MainWindow().setVisible(true));
     }
+
+    public void chargerZoneSelectionneeDansPanneau() {
+        dto.ZoneDTO zone = this.controller.getZoneSelectionnee();
+
+        if (zone == null) {
+            this.txtForme.setText("Rectangle");
+            this.txtLargeur.setText("0.0000");
+            this.txtHauteur.setText("0.0000");
+            this.txtPosX.setText("0.0000");
+            this.txtPosY.setText("0.0000");
+            return;
+        }
+
+        this.txtPosX.setText(String.format(java.util.Locale.US, "%.4f", zone.getX()));
+        this.txtPosY.setText(String.format(java.util.Locale.US, "%.4f", zone.getY()));
+        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.4f", zone.getLargeur()));
+        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.4f", zone.getHauteur()));
+
+        switch (zone.getTypeForme()) {
+            case "RECTANGULAIRE" -> this.txtForme.setText("Rectangle");
+            case "TRIANGULAIRE" -> this.txtForme.setText("Triangle");
+            case "TRIANGULAIRE_TRONQUEE" -> this.txtForme.setText("Triangle tronque");
+            default -> this.txtForme.setText("Rectangle");
+        }
+
+
+        String typeZone = zone.getTypeZone();
+        java.util.Enumeration<AbstractButton> boutons = this.typeGroup.getElements();
+        while (boutons.hasMoreElements()) {
+            AbstractButton bouton = boutons.nextElement();
+            String action = bouton.getActionCommand();
+
+            if ("BLOC".equals(typeZone) && "Blocs".equals(action)) {
+                bouton.setSelected(true);
+                break;
+            }
+            if ("CLASSIQUE".equals(typeZone) && "Classique".equals(action)) {
+                bouton.setSelected(true);
+                break;
+            }
+            if ("OUVERTURE".equals(typeZone) && "Ouverture".equals(action)) {
+                bouton.setSelected(true);
+                break;
+            }
+        }
+    }
+
+    private void creerZoneDepuisPanneau() {
+        try {
+            this.appliquerEchelleDepuisChamp();
+
+            double x = Double.parseDouble(this.txtPosX.getText().replace(',', '.'));
+            double y = Double.parseDouble(this.txtPosY.getText().replace(',', '.'));
+            double largeur = Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
+            double hauteur = Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
+
+            if (largeur <= 0 || hauteur <= 0) {
+                throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
+            }
+
+            String forme = this.getFormeSaisie();
+            String typeZone = this.getTypeZoneSelectionne();
+
+            this.controller.ajouterZoneDepuisPanneau(x, y, largeur, hauteur, forme, typeZone);
+
+            this.chargerZoneSelectionneeDansPanneau();
+            this.mettreAJourChampEchelle();
+            this.drawingPanel.repaint();
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Valeurs invalides dans le panneau d'edition.",
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    ex.getMessage(),
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void appliquerEchelleDepuisChamp() {
+        double echelle = Double.parseDouble(this.txtEchelle.getText().replace(',', '.'));
+
+        if (echelle <= 0.0) {
+            throw new IllegalArgumentException("L'echelle doit etre superieure a 0.");
+        }
+
+        this.controller.definirMetresParPixel(echelle);
+    }
+
+    private void mettreAJourChampEchelle() {
+        double echelleAffichee = this.controller.getMetresParPixel() / this.drawingPanel.getZoomFactor();
+        this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", echelleAffichee));
+    }
+
+    private void appliquerEchelleIndependante() {
+        try {
+            double echelleSouhaitee = Double.parseDouble(this.txtEchelle.getText().replace(',', '.'));
+
+            if (echelleSouhaitee <= 0.0) {
+                throw new IllegalArgumentException("L'echelle doit etre superieure a 0.");
+            }
+
+            double metresParPixelBase = this.controller.getMetresParPixel();
+            double nouveauZoom = metresParPixelBase / echelleSouhaitee;
+
+            this.drawingPanel.definirZoomFactor(nouveauZoom);
+            this.mettreAJourChampEchelleSelonZoom();
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Valeur d'echelle invalide.",
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    ex.getMessage(),
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void mettreAJourChampEchelleSelonZoom() {
+        double echelleAffichee = this.controller.getMetresParPixel() / this.drawingPanel.getZoomFactor();
+        this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", echelleAffichee));
+    }
+
+    private void appliquerModificationZone() {
+        int index = this.controller.getIndexZoneSelectionnee();
+        if (index < 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Aucune zone n'est selectionnee.",
+                    "Modification",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+
+            double x = Double.parseDouble(this.txtPosX.getText().replace(',', '.'));
+            double y = Double.parseDouble(this.txtPosY.getText().replace(',', '.'));
+            double largeur = Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
+            double hauteur = Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
+
+            if (largeur <= 0 || hauteur <= 0) {
+                throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
+            }
+
+            String forme = this.getFormeSaisie();
+            String typeZone = this.getTypeZoneSelectionne();
+
+            this.controller.modifierZone(index, x, y, largeur, hauteur, forme, typeZone);
+            this.chargerZoneSelectionneeDansPanneau();
+            this.drawingPanel.repaint();
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Valeurs invalides dans le panneau d'edition.",
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this,
+                    ex.getMessage(),
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
 }

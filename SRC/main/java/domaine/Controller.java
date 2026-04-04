@@ -2,10 +2,10 @@ package domaine;
 
 import dto.PlanDTO;
 import dto.ZoneDTO;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.Loader;
 
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -51,7 +51,7 @@ public class Controller {
             throw new IllegalArgumentException("Le fichier selectionne doit etre un PDF.");
         }
 
-        try (PDDocument document = Loader.loadPDF(fichier)) {
+        try (PDDocument document = Loader.loadPDF(fichier))  {
             int nombrePages = document.getNumberOfPages();
             List<String> vues = new ArrayList<>();
             List<BufferedImage> nouvellesImagesVues = new ArrayList<>();
@@ -258,6 +258,13 @@ public class Controller {
         double xReel = this.convertirPixelsEnCoordonneeReelle(x);
         double yReel = this.convertirPixelsEnCoordonneeReelle(y);
         Zone nouvelleZone = this.creerZone(xReel, yReel, largeur, hauteur, typeForme, typeZone);
+        this.batiment.ajouterZone(nouvelleZone);
+        this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
+        this.invaliderSimulationBlocs();
+    }
+
+    public void ajouterZoneDepuisPanneau(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
+        Zone nouvelleZone = this.creerZone(x, y, largeur, hauteur, typeForme, typeZone);
         this.batiment.ajouterZone(nouvelleZone);
         this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
         this.invaliderSimulationBlocs();
@@ -477,3 +484,4 @@ public class Controller {
         }
     }
 }
+

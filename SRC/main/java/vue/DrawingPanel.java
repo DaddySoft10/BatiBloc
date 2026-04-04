@@ -203,6 +203,19 @@ public class DrawingPanel extends JPanel {
         ajusterZoom(facteur, centreX, centreY, image);
     }
 
+    public double getZoomFactor() {
+        return this.zoomFactor;
+    }
+
+    public void definirZoomFactor(double nouveauZoom) {
+        if (nouveauZoom <= 0.0) {
+            throw new IllegalArgumentException("Le zoom doit etre superieur a 0.");
+        }
+
+        this.zoomFactor = nouveauZoom;
+        this.repaint();
+    }
+
     public double[] convertirEcranVersMonde(int xEcran, int yEcran) {
         BufferedImage image = this.mainWindow.getController().getImageVueCourante();
         RenderContext context = this.calculerContexteRendu(image);
@@ -359,6 +372,12 @@ public class DrawingPanel extends JPanel {
                         "RECTANGULAIRE",
                         this.mainWindow.getTypeZoneSelectionne()
                 );
+                this.mainWindow.getController().selectionnerZone(
+                        xMin + largeur / 2.0,
+                        yMin + hauteur / 2.0
+                );
+
+                this.mainWindow.rafraichirPanneauDroit();
             }
         }
 
