@@ -5,6 +5,7 @@ import dto.ZoneDTO;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.Loader;
 
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -50,7 +51,7 @@ public class Controller {
             throw new IllegalArgumentException("Le fichier selectionne doit etre un PDF.");
         }
 
-        try (PDDocument document = PDDocument.load(fichier)) {
+        try (PDDocument document = Loader.loadPDF(fichier))  {
             int nombrePages = document.getNumberOfPages();
             List<String> vues = new ArrayList<>();
             List<BufferedImage> nouvellesImagesVues = new ArrayList<>();
