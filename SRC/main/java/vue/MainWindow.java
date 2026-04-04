@@ -29,6 +29,8 @@ public class MainWindow extends JFrame {
     private JTextField txtPosY;
     private JTextField txtNomNouvelleVue;
     private JTextField txtEchelle;
+    private JTextField txtNombreBlocs;
+    private JLabel lblNombreBlocs;
 
     // Attribut pour boutons radio
     private ButtonGroup typeGroup;
@@ -107,6 +109,10 @@ public class MainWindow extends JFrame {
             this.txtHauteur.setText("0.0000");
             this.txtPosX.setText("0.0000");
             this.txtPosY.setText("0.0000");
+            this.lblNombreBlocs.setText(
+                    "Nombre de Blocs Total : " + this.controller.getNombreTotalBlocs()
+            );
+
             if (this.btnSupprimerZone != null) {
                 this.btnSupprimerZone.setEnabled(false);
             }
@@ -141,7 +147,15 @@ public class MainWindow extends JFrame {
 
         this.txtEchelle = this.createNumberField();
         this.txtEchelle.setEditable(true);
-        this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", this.controller.getMetresParPixel()));
+
+        double poucesParPixel = this.controller.getMetresParPixel() / 0.0254;
+        this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", poucesParPixel));
+
+        this.txtNombreBlocs = new JTextField();
+        this.txtNombreBlocs.setEditable(false);
+        this.txtNombreBlocs.setText("0");
+
+        this.lblNombreBlocs = new JLabel("Nombre de Blocs Total : 0");
 
         this.txtNomNouvelleVue = new JTextField("Vue rognee");
 
@@ -231,6 +245,7 @@ public class MainWindow extends JFrame {
         topToolBar.addSeparator();
         topToolBar.add(new JButton("Sauvegarder"));
         topToolBar.addSeparator();
+
 
         JButton btnCalculer = new JButton("Calculer l'estimation");
         btnCalculer.addActionListener(e -> this.afficherEstimation());
@@ -428,7 +443,7 @@ public class MainWindow extends JFrame {
         this.addFormField(rightSideBar, gbc, 2, "Hauteur (m) :", this.txtHauteur);
         this.addFormField(rightSideBar, gbc, 3, "Position X (m) :", this.txtPosX);
         this.addFormField(rightSideBar, gbc, 4, "Position Y (m) :", this.txtPosY);
-        this.addFormField(rightSideBar, gbc, 5, "Echelle (m / pixel) :", this.txtEchelle);
+        this.addFormField(rightSideBar, gbc, 5, "Echelle (pouces / pixel) :", this.txtEchelle);
 
         gbc.gridx = 0;
         gbc.gridy = 6;
@@ -457,7 +472,15 @@ public class MainWindow extends JFrame {
         this.btnSupprimerZone.addActionListener(e -> this.supprimerZoneSelectionnee());
         rightSideBar.add(this.btnSupprimerZone, gbc);
 
-        gbc.gridy = 10;
+        gbc.gridy = 10; // ou le dernier index dispo
+        gbc.gridx = 0;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(20, 5, 5, 5);
+
+        this.lblNombreBlocs.setFont(new Font("Arial", Font.BOLD, 12));
+        rightSideBar.add(this.lblNombreBlocs, gbc);
+
+        gbc.gridy = 11;
         gbc.weighty = 1.0;
         rightSideBar.add(Box.createGlue(), gbc);
 
@@ -535,6 +558,7 @@ public class MainWindow extends JFrame {
 
         this.controller.supprimerZoneSelectionnee();
         this.rafraichirPanneauDroit();
+        this.mettreAJourNombreTotalBlocs();
         this.drawingPanel.repaint();
     }
 
@@ -562,6 +586,7 @@ public class MainWindow extends JFrame {
         try {
             this.controller.supprimerVue(indexSelectionne);
             this.rafraichirVuesDuPlan();
+            this.mettreAJourNombreTotalBlocs();
             this.drawingPanel.repaint();
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this,
@@ -707,6 +732,7 @@ public class MainWindow extends JFrame {
 
             this.chargerZoneSelectionneeDansPanneau();
             this.mettreAJourChampEchelle();
+            this.mettreAJourNombreTotalBlocs();
             this.drawingPanel.repaint();
 
         } catch (NumberFormatException ex) {
@@ -739,14 +765,15 @@ public class MainWindow extends JFrame {
 
     private void appliquerEchelleIndependante() {
         try {
-            double echelleSouhaitee = Double.parseDouble(this.txtEchelle.getText().replace(',', '.'));
+            double poucesParPixel = Double.parseDouble(this.txtEchelle.getText().replace(',', '.'));
 
-            if (echelleSouhaitee <= 0.0) {
+            if (poucesParPixel <= 0.0) {
                 throw new IllegalArgumentException("L'echelle doit etre superieure a 0.");
             }
 
+            double metresParPixel = poucesParPixel * 0.0254;
             double metresParPixelBase = this.controller.getMetresParPixel();
-            double nouveauZoom = metresParPixelBase / echelleSouhaitee;
+            double nouveauZoom = metresParPixelBase / poucesParPixel;
 
             this.drawingPanel.definirZoomFactor(nouveauZoom);
             this.mettreAJourChampEchelleSelonZoom();
@@ -795,6 +822,7 @@ public class MainWindow extends JFrame {
 
             this.controller.modifierZone(index, x, y, largeur, hauteur, forme, typeZone);
             this.chargerZoneSelectionneeDansPanneau();
+            this.mettreAJourNombreTotalBlocs();
             this.drawingPanel.repaint();
 
         } catch (NumberFormatException ex) {
@@ -810,4 +838,9 @@ public class MainWindow extends JFrame {
         }
     }
 
+    public void mettreAJourNombreTotalBlocs() {
+        this.controller.lancerSimulationToutesLesZones();
+        int totalBlocs = this.controller.getNombreTotalBlocs();
+        this.lblNombreBlocs.setText("Nombre de Blocs Total : " + totalBlocs);
+    }
 }
