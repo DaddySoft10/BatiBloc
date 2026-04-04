@@ -193,14 +193,18 @@ public class DrawingPanel extends JPanel {
         if (facteur <= 0.0) {
             return;
         }
+
         BufferedImage image = this.mainWindow.getController().getImageVueCourante();
         if (image == null) {
             return;
         }
 
-        int centreX = this.getWidth() / 2;
-        int centreY = this.getHeight() / 2;
-        ajusterZoom(facteur, centreX, centreY, image);
+        int[] centre = this.getCentreImageAffichee();
+        if (centre == null) {
+            return;
+        }
+
+        ajusterZoom(facteur, centre[0], centre[1], image);
     }
 
     public double getZoomFactor() {
@@ -212,8 +216,18 @@ public class DrawingPanel extends JPanel {
             throw new IllegalArgumentException("Le zoom doit etre superieur a 0.");
         }
 
-        this.zoomFactor = nouveauZoom;
-        this.repaint();
+        BufferedImage image = this.mainWindow.getController().getImageVueCourante();
+        if (image == null) {
+            return;
+        }
+
+        int[] centre = this.getCentreImageAffichee();
+        if (centre == null) {
+            return;
+        }
+
+        double facteur = nouveauZoom / this.zoomFactor;
+        ajusterZoom(facteur, centre[0], centre[1], image);
     }
 
     public double[] convertirEcranVersMonde(int xEcran, int yEcran) {
@@ -272,8 +286,9 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        double nouveauX = apres.baseX + (u * apres.largeur);
-        double nouveauY = apres.baseY + (v * apres.hauteur);
+        double nouveauX = apres.x + (u * apres.largeur);
+        double nouveauY = apres.y + (v * apres.hauteur);
+
         this.offsetX += pointZoomX - nouveauX;
         this.offsetY += pointZoomY - nouveauY;
         this.repaint();
@@ -949,5 +964,22 @@ public class DrawingPanel extends JPanel {
             this.largeur = largeur;
             this.hauteur = hauteur;
         }
+    }
+
+    private int[] getCentreImageAffichee() {
+        BufferedImage image = this.mainWindow.getController().getImageVueCourante();
+        if (image == null) {
+            return null;
+        }
+
+        RenderContext context = this.calculerContexteRendu(image);
+        if (context == null) {
+            return null;
+        }
+
+        int centreX = (int) Math.round(context.x + context.largeur / 2.0);
+        int centreY = (int) Math.round(context.y + context.hauteur / 2.0);
+
+        return new int[]{centreX, centreY};
     }
 }
