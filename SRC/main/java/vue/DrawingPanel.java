@@ -393,6 +393,7 @@ public class DrawingPanel extends JPanel {
                 );
 
                 this.mainWindow.rafraichirPanneauDroit();
+                this.mainWindow.mettreAJourNombreTotalBlocs();
             }
         }
 
