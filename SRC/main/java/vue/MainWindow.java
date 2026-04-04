@@ -416,23 +416,24 @@ public class MainWindow extends JFrame {
         gbc.gridwidth = 2;
         gbc.insets = new Insets(20, 5, 5, 5);
 
-        JButton btnAppliquerModification = new JButton("Appliquer les modifications");
-        btnAppliquerModification.addActionListener(e -> this.appliquerModificationZone());
-        rightSideBar.add(btnAppliquerModification, gbc);
-
         JButton btnCreerZone = new JButton("Creer zone");
         btnCreerZone.addActionListener(e -> this.creerZoneDepuisPanneau());
         rightSideBar.add(btnCreerZone, gbc);
 
         gbc.gridy = 6;
+        JButton btnAppliquerModification = new JButton("Appliquer les modifications");
+        btnAppliquerModification.addActionListener(e -> this.appliquerModificationZone());
+        rightSideBar.add(btnAppliquerModification, gbc);
+
+        gbc.gridy = 7;
         this.btnSupprimerZone = new JButton("Supprimer la zone");
         this.btnSupprimerZone.setBackground(new Color(220, 53, 69));
-        this.btnSupprimerZone.setForeground(Color.WHITE);
+        this.btnSupprimerZone.setForeground(Color.RED);
         this.btnSupprimerZone.setEnabled(false);
         this.btnSupprimerZone.addActionListener(e -> this.supprimerZoneSelectionnee());
         rightSideBar.add(this.btnSupprimerZone, gbc);
 
-        gbc.gridy = 6;
+        gbc.gridy = 8;
         gbc.weighty = 1.0;
         rightSideBar.add(Box.createGlue(), gbc);
 
@@ -676,7 +677,7 @@ public class MainWindow extends JFrame {
             String forme = this.getFormeSaisie();
             String typeZone = this.getTypeZoneSelectionne();
 
-            this.controller.ajouterZone(x, y, largeur, hauteur, forme, typeZone);
+            this.controller.ajouterZoneDepuisPanneau(x, y, largeur, hauteur, forme, typeZone);
 
             this.chargerZoneSelectionneeDansPanneau();
             this.drawingPanel.repaint();

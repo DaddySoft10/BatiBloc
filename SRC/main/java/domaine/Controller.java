@@ -263,6 +263,13 @@ public class Controller {
         this.invaliderSimulationBlocs();
     }
 
+    public void ajouterZoneDepuisPanneau(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
+        Zone nouvelleZone = this.creerZone(x, y, largeur, hauteur, typeForme, typeZone);
+        this.batiment.ajouterZone(nouvelleZone);
+        this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
+        this.invaliderSimulationBlocs();
+    }
+
     public void supprimerZone(int index) {
         List<Zone> zones = this.batiment.getFacadeCourante().getZones();
         if (index < 0 || index >= zones.size()) {
