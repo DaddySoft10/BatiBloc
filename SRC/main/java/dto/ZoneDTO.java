@@ -6,15 +6,17 @@ public class ZoneDTO {
     private final double largeur;
     private final double hauteur;
     private final String typeForme;
+    private final double ratioCoupe;
     private final String typeZone;
 
-    public ZoneDTO(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
+    public ZoneDTO(double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
         this.x = x;
         this.y = y;
         this.largeur = largeur;
         this.hauteur = hauteur;
         this.typeForme = typeForme == null ? "" : typeForme;
         this.typeZone = typeZone == null ? "" : typeZone;
+        this.ratioCoupe = ratioCoupe;
     }
 
     public double getX() {
@@ -32,6 +34,8 @@ public class ZoneDTO {
     public double getHauteur() {
         return this.hauteur;
     }
+
+    public double getRatioCoupe() { return ratioCoupe; }
 
     public String getTypeForme() {
         return this.typeForme;

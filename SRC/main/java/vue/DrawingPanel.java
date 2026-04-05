@@ -42,6 +42,9 @@ public class DrawingPanel extends JPanel {
     private int indexZoneDeplacement;
     private double dernierXMonde;
     private double dernierYMonde;
+    private boolean tronquageEnCours;
+    private int yTronquagePanel;
+    private int indexZoneTronquage;
 
     public DrawingPanel(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
@@ -64,10 +67,19 @@ public class DrawingPanel extends JPanel {
         this.indexZoneDeplacement = -1;
         this.dernierXMonde = 0.0;
         this.dernierYMonde = 0.0;
+        this.tronquageEnCours = false;
+        this.yTronquagePanel = 0;
+        this.indexZoneTronquage = -1;
 
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+
+                if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.TRONQUAGE) {
+                    demarrerTronquage(e.getX(), e.getY());
+                    return;
+                }
+
                 if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.SELECTION) {
                     demarrerDeplacementZone(e.getX(), e.getY());
                 }
@@ -91,6 +103,7 @@ public class DrawingPanel extends JPanel {
                     return;
                 }
 
+
                 xDepartImage = point.x;
                 yDepartImage = point.y;
                 rognageEnCours = true;
@@ -104,13 +117,21 @@ public class DrawingPanel extends JPanel {
                 if (deplacementZoneEnCours) {
                     terminerDeplacementZone();
                 }
+
+                if (tronquageEnCours) {
+                    terminerTronquage(e.getX(), e.getY());
+                    return;
+                }
+
                 if (modeActuel == ModeInteraction.CREATION && creationEnCours) {
                     terminerCreationZone(e.getX(), e.getY());
                     return;
                 }
+
                 if (!estModeRognage() || !rognageEnCours) {
                     return;
                 }
+
                 rognageEnCours = false;
                 mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
             }
@@ -134,6 +155,10 @@ public class DrawingPanel extends JPanel {
                 }
                 if (estModeRognage() && rognageEnCours) {
                     mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
+                }
+                if (tronquageEnCours) {
+                    mettreAJourTronquageDepuisSouris(e.getX(), e.getY());
+                    return;
                 }
             }
         });
@@ -385,7 +410,9 @@ public class DrawingPanel extends JPanel {
                         largeur,
                         hauteur,
                         this.mainWindow.getFormeSaisie(),
-                        this.mainWindow.getTypeZoneSelectionne()
+                        this.mainWindow.getTypeZoneSelectionne(),
+                        0.0
+
                 );
                 this.mainWindow.getController().selectionnerZone(
                         xMin + largeur / 2.0,
@@ -634,6 +661,7 @@ public class DrawingPanel extends JPanel {
 
         // Afficher info zoom en bas à gauche
         this.dessinerCreationEnCours(g);
+        this.dessinerLigneTronquage(g);
         String infoZoom = String.format("Zoom: %.0f%%", this.zoomFactor * 100);
         g.setColor(new Color(50, 50, 50, 180));
         g.fillRoundRect(8, this.getHeight() - 28, 90, 20, 6, 6);
@@ -646,7 +674,6 @@ public class DrawingPanel extends JPanel {
         if (!this.creationEnCours || this.creationAffichee == null) {
             return;
         }
-
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setColor(new Color(34, 139, 34, 70));
         g2d.fillRect(
@@ -753,28 +780,28 @@ public class DrawingPanel extends JPanel {
                 g2d.dispose();
 
             } else if ("TRIANGULAIRE_TRONQUEE".equals(typeForme)) {
-                double retraitImage = imageLargeur * 0.25;
-                int retraitScreen = (int) Math.round((retraitImage / imageVue.getWidth()) * context.largeur);
+                double ratioCoupe = zone.getRatioCoupe();
+                if (ratioCoupe <= 0.0) {
+                    ratioCoupe = 0.5;
+                }
 
-                int xBase      = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
-                int yBase      = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
-                int xBaseDroit = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
-                int yBasBas    = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
+                double largeurHautImage = imageLargeur * ratioCoupe;
+                double retraitImage = (imageLargeur - largeurHautImage) / 2.0;
+                double yCoupeImage = imageY + imageHauteur * ratioCoupe;
 
-                int hautGX = xBase + retraitScreen;
-                int hautGY = yBase;
-                int hautDX = xBaseDroit - retraitScreen;
-                int hautDY = yBase;
-                int basGX  = xBase;
-                int basGY  = yBasBas;
-                int basDX  = xBaseDroit;
-                int basDY  = yBasBas;
+                int hautGX = (int) Math.round(context.x + ((imageX + retraitImage) / imageVue.getWidth()) * context.largeur);
+                int hautDX = (int) Math.round(context.x + ((imageX + imageLargeur - retraitImage) / imageVue.getWidth()) * context.largeur);
+                int hautY  = (int) Math.round(context.y + (yCoupeImage / imageVue.getHeight()) * context.hauteur);
+
+                int basGX  = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+                int basDX  = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
+                int basY   = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
 
                 java.awt.Polygon trapeze = new java.awt.Polygon();
-                trapeze.addPoint(hautGX, hautGY);
-                trapeze.addPoint(hautDX, hautDY);
-                trapeze.addPoint(basDX, basDY);
-                trapeze.addPoint(basGX, basGY);
+                trapeze.addPoint(hautGX, hautY);
+                trapeze.addPoint(hautDX, hautY);
+                trapeze.addPoint(basDX, basY);
+                trapeze.addPoint(basGX, basY);
 
                 g.setColor(couleurRemplissage);
                 g.fillPolygon(trapeze);
@@ -982,5 +1009,164 @@ public class DrawingPanel extends JPanel {
         int centreY = (int) Math.round(context.y + context.hauteur / 2.0);
 
         return new int[]{centreX, centreY};
+    }
+    private void dessinerLigneTronquage(Graphics g) {
+        if (!this.tronquageEnCours) {
+            return;
+        }
+
+        Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setColor(Color.RED);
+        g2d.setStroke(new BasicStroke(2f));
+        g2d.drawLine(0, this.yTronquagePanel, this.getWidth(), this.yTronquagePanel);
+        g2d.dispose();
+    }
+    private void demarrerTronquage(int xPanel, int yPanel) {
+        if (this.creationEnCours || this.rognageEnCours || this.deplacementZoneEnCours
+                || this.modeActuel != ModeInteraction.TRONQUAGE) {
+            return;
+        }
+
+        int indexSelectionne = this.mainWindow.getController().getIndexZoneSelectionnee();
+        if (indexSelectionne < 0) {
+            return;
+        }
+
+        ZoneDTO zone = this.mainWindow.getController().getZoneSelectionnee();
+        if (zone == null) {
+            return;
+        }
+
+        if (!"TRIANGULAIRE".equals(zone.getTypeForme())) {
+            return;
+        }
+
+        double[] coordonneesMonde = this.convertirEcranVersMonde(xPanel, yPanel);
+        if (coordonneesMonde == null) {
+            return;
+        }
+
+        if (!this.mainWindow.getController().zoneContientPoint(
+                indexSelectionne,
+                coordonneesMonde[0],
+                coordonneesMonde[1])) {
+            return;
+        }
+
+        this.tronquageEnCours = true;
+        this.indexZoneTronquage = indexSelectionne;
+
+        int[] coinHautGauche = this.convertirMondeVersEcran(
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX()),
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY())
+        );
+
+        int[] coinBasDroit = this.convertirMondeVersEcran(
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX() + zone.getLargeur()),
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY() + zone.getHauteur())
+        );
+
+        if (coinHautGauche == null || coinBasDroit == null) {
+            this.tronquageEnCours = false;
+            this.indexZoneTronquage = -1;
+            return;
+        }
+
+        int yHaut = coinHautGauche[1];
+        int yBas = coinBasDroit[1];
+
+        this.yTronquagePanel = Math.max(yHaut, Math.min(yPanel, yBas));
+        this.repaint();
+    }
+    private void mettreAJourTronquageDepuisSouris(int xPanel, int yPanel) {
+        if (!this.tronquageEnCours || this.indexZoneTronquage < 0) {
+            return;
+        }
+
+        ZoneDTO zone = this.mainWindow.getController().getZoneSelectionnee();
+        if (zone == null) {
+            return;
+        }
+
+        int[] coinHautGauche = this.convertirMondeVersEcran(
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX()),
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY())
+        );
+
+        int[] coinBasDroit = this.convertirMondeVersEcran(
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX() + zone.getLargeur()),
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY() + zone.getHauteur())
+        );
+
+        if (coinHautGauche == null || coinBasDroit == null) {
+            return;
+        }
+
+        int yHaut = coinHautGauche[1];
+        int yBas = coinBasDroit[1];
+
+        this.yTronquagePanel = Math.max(yHaut, Math.min(yPanel, yBas));
+        this.repaint();
+    }
+    private void terminerTronquage(int xPanel, int yPanel) {
+        if (!this.tronquageEnCours || this.indexZoneTronquage < 0) {
+            return;
+        }
+
+        ZoneDTO zone = this.mainWindow.getController().getZoneSelectionnee();
+        if (zone == null) {
+            this.tronquageEnCours = false;
+            this.indexZoneTronquage = -1;
+            this.repaint();
+            return;
+        }
+
+        int[] coinHautGauche = this.convertirMondeVersEcran(
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX()),
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY())
+        );
+
+        int[] coinBasDroit = this.convertirMondeVersEcran(
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX() + zone.getLargeur()),
+                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY() + zone.getHauteur())
+        );
+
+        if (coinHautGauche == null || coinBasDroit == null) {
+            this.tronquageEnCours = false;
+            this.indexZoneTronquage = -1;
+            this.repaint();
+            return;
+        }
+
+        int yHaut = coinHautGauche[1];
+        int yBas = coinBasDroit[1];
+        int hauteurScreen = yBas - yHaut;
+
+        if (hauteurScreen <= 0) {
+            this.tronquageEnCours = false;
+            this.indexZoneTronquage = -1;
+            this.repaint();
+            return;
+        }
+
+        double ratioCoupe = (double) (this.yTronquagePanel - yHaut) / hauteurScreen;
+        ratioCoupe = Math.max(0.05, Math.min(ratioCoupe, 0.95));
+
+        this.mainWindow.getController().modifierZone(
+                this.indexZoneTronquage,
+                zone.getX(),
+                zone.getY(),
+                zone.getLargeur(),
+                zone.getHauteur(),
+                "TRIANGULAIRE_TRONQUEE",
+                zone.getTypeZone(),
+                ratioCoupe
+        );
+
+        this.tronquageEnCours = false;
+        this.indexZoneTronquage = -1;
+        this.mainWindow.rafraichirPanneauDroit();
+        this.mainWindow.mettreAJourNombreTotalBlocs();
+        this.repaint();
     }
 }

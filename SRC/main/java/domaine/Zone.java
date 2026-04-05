@@ -5,6 +5,7 @@ public class Zone {
     private double y;
     private double largeur;
     private double hauteur;
+    private double ratioCoupe = 0.0;
     private TypeForme typeForme;
 
     public Zone() {
@@ -55,6 +56,17 @@ public class Zone {
             throw new IllegalArgumentException("La hauteur doit etre superieure a 0.");
         }
         this.hauteur = hauteur;
+    }
+
+    public double getRatioCoupe() {
+        return this.ratioCoupe;
+    }
+
+    public void setRatioCoupe(double ratioCoupe) {
+        if (ratioCoupe < 0.0 || ratioCoupe >= 1.0) {
+            throw new IllegalArgumentException("Le ratio de coupe doit etre dans [0, 1[.");
+        }
+        this.ratioCoupe = ratioCoupe;
     }
 
     public TypeForme getTypeForme() {

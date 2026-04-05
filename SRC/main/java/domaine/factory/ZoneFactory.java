@@ -18,17 +18,24 @@ public final class ZoneFactory {
             double largeur,
             double hauteur,
             TypeForme typeForme,
-            TypeZone typeZone
+            TypeZone typeZone,
+            double ratioCoupe
     ) {
         if (largeur <= 0 || hauteur <= 0) {
             throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
         }
 
-        return switch (typeZone) {
+        Zone zone = switch (typeZone) {
             case BLOC -> new ZoneBloc(x, y, largeur, hauteur, typeForme);
             case CLASSIQUE -> new ZoneClassique(x, y, largeur, hauteur, typeForme);
-            case OUVERTURE -> new ZoneOuverture(x, y, largeur, hauteur, typeForme);
+            case OUVERTURE -> throw new IllegalArgumentException(
+                    "Le type de zone OUVERTURE n'est pas encore implemente."
+            );
         };
+
+            zone.setRatioCoupe(ratioCoupe);
+            return zone;
+
     }
 
     public static Zone creerDepuisTexte(
@@ -37,7 +44,8 @@ public final class ZoneFactory {
             double largeur,
             double hauteur,
             String typeForme,
-            String typeZone
+            String typeZone,
+            double ratioCoupe
     ) {
         return creer(
                 x,
@@ -45,7 +53,8 @@ public final class ZoneFactory {
                 largeur,
                 hauteur,
                 TypeForme.fromLabel(typeForme),
-                TypeZone.fromLabel(typeZone)
+                TypeZone.fromLabel(typeZone),
+                ratioCoupe
         );
     }
 }

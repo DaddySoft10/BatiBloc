@@ -258,7 +258,8 @@ public class Controller {
                 largeurPouces, hauteurPouces, nbRangees, blocsParRangee, nbTotalBlocs, coutTotal);
     }
 
-    public void ajouterZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
+    public void ajouterZone(double x, double y, double largeur, double hauteur,
+                                        String typeForme, String typeZone, double ratioCoupe) {
         double xReel = this.convertirPixelsEnCoordonneeReelle(x);
         double yReel = this.convertirPixelsEnCoordonneeReelle(y);
         double largeurReelle = this.convertirPixelsEnCoordonneeReelle(largeur);
@@ -270,7 +271,8 @@ public class Controller {
                 largeurReelle,
                 hauteurReelle,
                 typeForme,
-                typeZone
+                typeZone,
+                ratioCoupe
         );
 
         this.batiment.ajouterZone(nouvelleZone);
@@ -279,8 +281,8 @@ public class Controller {
 
     }
 
-    public void ajouterZoneDepuisPanneau(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        Zone nouvelleZone = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone);
+    public void ajouterZoneDepuisPanneau(double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
+        Zone nouvelleZone = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone, ratioCoupe);
         this.batiment.ajouterZone(nouvelleZone);
         this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
         this.invaliderSimulationBlocs();
@@ -301,8 +303,8 @@ public class Controller {
         this.invaliderSimulationBlocs();
     }
 
-    public void modifierZone(int index, double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        Zone zoneModifiee = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone);
+    public void modifierZone(int index, double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
+        Zone zoneModifiee = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone, ratioCoupe);
         this.batiment.getFacadeCourante().modifierZone(index, zoneModifiee);
         this.indexZoneSelectionnee = index;
         this.invaliderSimulationBlocs();
@@ -442,7 +444,8 @@ public class Controller {
                 zone.getLargeur(),
                 zone.getHauteur(),
                 zone.getTypeForme().name(),
-                typeZone
+                typeZone,
+                zone.getRatioCoupe()
         );
     }
 

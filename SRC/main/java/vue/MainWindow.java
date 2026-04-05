@@ -261,6 +261,11 @@ public class MainWindow extends JFrame {
         groupeModes.add(btnRognage);
         btnCreation.setSelected(true);
 
+        JToggleButton btnTronquage = new JToggleButton("Tronquer triangle");
+        btnTronquage.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.TRONQUAGE));
+        groupeModes.add(btnTronquage);
+        topToolBar.add(btnTronquage);
+
         JButton btnZoomPlus = new JButton("Zoom +");
         btnZoomPlus.addActionListener(e -> {
             this.drawingPanel.zoomerDepuisCentre(1.15);
@@ -728,7 +733,7 @@ public class MainWindow extends JFrame {
             String forme = this.getFormeSaisie();
             String typeZone = this.getTypeZoneSelectionne();
 
-            this.controller.ajouterZoneDepuisPanneau(x, y, largeur, hauteur, forme, typeZone);
+            this.controller.ajouterZoneDepuisPanneau(x, y, largeur, hauteur, forme, typeZone,0.0);
 
             this.chargerZoneSelectionneeDansPanneau();
             this.mettreAJourChampEchelle();
@@ -797,43 +802,36 @@ public class MainWindow extends JFrame {
     }
 
     private void appliquerModificationZone() {
-        int index = this.controller.getIndexZoneSelectionnee();
-        if (index < 0) {
-            JOptionPane.showMessageDialog(this,
-                    "Aucune zone n'est selectionnee.",
-                    "Modification",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
         try {
+            int index = this.controller.getIndexZoneSelectionnee();
+            if (index < 0) {
+                return;
+            }
 
             double x = Double.parseDouble(this.txtPosX.getText().replace(',', '.'));
             double y = Double.parseDouble(this.txtPosY.getText().replace(',', '.'));
             double largeur = Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
             double hauteur = Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
 
-            if (largeur <= 0 || hauteur <= 0) {
-                throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
-            }
-
             String forme = this.getFormeSaisie();
             String typeZone = this.getTypeZoneSelectionne();
 
-            this.controller.modifierZone(index, x, y, largeur, hauteur, forme, typeZone);
+            ZoneDTO zone = this.controller.getZoneSelectionnee();
+            double ratioCoupe = zone != null ? zone.getRatioCoupe() : 0.0;
+
+            this.controller.modifierZone(
+                    index, x, y, largeur, hauteur,
+                    forme, typeZone, ratioCoupe
+            );
+
             this.chargerZoneSelectionneeDansPanneau();
             this.mettreAJourNombreTotalBlocs();
             this.drawingPanel.repaint();
 
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Valeurs invalides dans le panneau d'edition.",
-                    "Erreur",
-                    JOptionPane.ERROR_MESSAGE);
-        } catch (IllegalArgumentException ex) {
+        } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     ex.getMessage(),
-                    "Erreur",
+                    "Erreur modification",
                     JOptionPane.ERROR_MESSAGE);
         }
     }
