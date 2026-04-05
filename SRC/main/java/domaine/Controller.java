@@ -422,21 +422,9 @@ public class Controller {
             throw new IllegalArgumentException("La zone de blocs ne peut pas etre nulle.");
         }
 
-        double largeurPouces = convertirMetresEnPouces(zone.getLargeur());
-        double hauteurPouces = convertirMetresEnPouces(zone.getHauteur());
-
-        return switch (zone.getTypeForme()) {
-            case RECTANGULAIRE -> SimulateurPlacement.simulerZoneRectangulaire(largeurPouces, hauteurPouces);
-            case TRIANGULAIRE -> SimulateurPlacement.simulerZoneTriangulaire(largeurPouces, hauteurPouces);
-            case TRIANGULAIRE_TRONQUEE -> {
-                double largeurSommetPouces = largeurPouces * RATIO_LARGEUR_SOMMET_TRIANGLE_TRONQUE;
-                yield SimulateurPlacement.simulerZoneTriangulaireTronquee(
-                        largeurPouces,
-                        largeurSommetPouces,
-                        hauteurPouces
-                );
-            }
-        };
+        return domaine.simulation.PlacementStrategyFactory
+                .creer(zone.getTypeForme())
+                .simuler(zone);
     }
 
 
