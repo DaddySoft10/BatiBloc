@@ -384,7 +384,7 @@ public class DrawingPanel extends JPanel {
                         yMin,
                         largeur,
                         hauteur,
-                        "RECTANGULAIRE",
+                        this.mainWindow.getFormeSaisie(),
                         this.mainWindow.getTypeZoneSelectionne()
                 );
                 this.mainWindow.getController().selectionnerZone(
