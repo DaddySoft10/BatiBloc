@@ -439,27 +439,6 @@ public class Controller {
         };
     }
 
-    private Zone creerZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        TypeForme forme = this.convertirTypeForme(typeForme);
-        String typeZoneNormalise = this.normaliserTexte(typeZone);
-
-        return switch (typeZoneNormalise) {
-            case "BLOC", "BLOCS" -> new ZoneBloc(x, y, largeur, hauteur, forme);
-            case "CLASSIQUE" -> new ZoneClassique(x, y, largeur, hauteur, forme);
-            default -> throw new IllegalArgumentException("Type de zone invalide.");
-        };
-    }
-
-    private TypeForme convertirTypeForme(String typeForme) {
-        String typeFormeNormalise = this.normaliserTexte(typeForme);
-
-        return switch (typeFormeNormalise) {
-            case "RECTANGULAIRE", "RECTANGLE" -> TypeForme.RECTANGULAIRE;
-            case "TRIANGULAIRE", "TRIANGLE" -> TypeForme.TRIANGULAIRE;
-            case "TRIANGULAIRE_TRONQUEE", "TRIANGULAIRE TRONQUEE", "TRIANGLE TRONQUE" -> TypeForme.TRIANGULAIRE_TRONQUEE;
-            default -> throw new IllegalArgumentException("Type de forme invalide.");
-        };
-    }
 
     private ZoneDTO convertirEnZoneDTO(Zone zone) {
         String typeZone = "ZONE";
@@ -477,13 +456,6 @@ public class Controller {
                 zone.getTypeForme().name(),
                 typeZone
         );
-    }
-
-    private String normaliserTexte(String valeur) {
-        if (valeur == null || valeur.isBlank()) {
-            throw new IllegalArgumentException("La valeur ne peut pas etre vide.");
-        }
-        return valeur.trim().toUpperCase(Locale.ROOT);
     }
 
     private double convertirMetresEnPouces(double valeurMetres) {
