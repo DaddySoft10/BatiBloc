@@ -5,3 +5,4 @@ public enum TypeForme {
     TRIANGULAIRE,
     TRIANGULAIRE_TRONQUEE
 }
+
