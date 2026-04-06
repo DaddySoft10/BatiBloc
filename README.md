@@ -1,9 +1,9 @@
-# BatiBloc - TP3
+# BatiBloc - TP4
 
 ## Description
 BatiBloc est une application permettant d'importer un plan en format PDF et de gerer differentes vues du plan.
 
-Cette version correspond au **livrable 3** du projet. Elle permet au client de tester certaines fonctionnalites principales de l'application.
+Cette version correspond au **livrable 4** du projet. Elle permet au client de tester certaines fonctionnalites principales de l'application.
 
 ## Prerequis
 - Java 21 ou plus recent
