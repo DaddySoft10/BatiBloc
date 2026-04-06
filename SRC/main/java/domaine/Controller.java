@@ -67,8 +67,16 @@ public class Controller {
             }
 
             this.batiment.getPlan().definirContenu(cheminFichier, vues);
+            this.batiment.reinitialiserFacades();
+            for (int i = 0; i < nombrePages; i++) {
+                this.batiment.ajouterFacade();
+            }
             this.imagesVues = nouvellesImagesVues;
             this.indexVueCourante = nombrePages > 0 ? 0 : -1;
+            if (nombrePages > 0) {
+                this.batiment.setFacadeCourante(0);
+            }
+            this.indexZoneSelectionnee = -1;
             return nombrePages;
         }
     }
@@ -102,6 +110,8 @@ public class Controller {
             throw new IllegalArgumentException("Index de vue invalide.");
         }
         this.indexVueCourante = index;
+        this.batiment.setFacadeCourante(index);
+        this.indexZoneSelectionnee = -1;
     }
 
     public BufferedImage getImageVueCourante() {
@@ -157,8 +167,11 @@ public class Controller {
         );
 
         this.batiment.getPlan().ajouterVue(nomVue.trim());
+        this.batiment.ajouterFacade();
         this.imagesVues.add(copierImage(imageRognee));
         this.indexVueCourante = this.imagesVues.size() - 1;
+        this.batiment.setFacadeCourante(this.indexVueCourante);
+        this.indexZoneSelectionnee = -1;
     }
 
     public void supprimerVue(int index) {
@@ -168,6 +181,7 @@ public class Controller {
         }
 
         this.batiment.getPlan().supprimerVue(index);
+        this.batiment.supprimerFacade(index);
 
         if (index < this.imagesVues.size()) {
             this.imagesVues.remove(index);
@@ -176,6 +190,8 @@ public class Controller {
         int nbVuesRestantes = this.batiment.getPlan().getVues().size();
         if (nbVuesRestantes == 0) {
             this.indexVueCourante = -1;
+            this.batiment.setFacadeCourante(-1);
+            this.indexZoneSelectionnee = -1;
             return;
         }
 
@@ -186,6 +202,8 @@ public class Controller {
         } else if (this.indexVueCourante > index) {
             this.indexVueCourante -= 1;
         }
+        this.batiment.setFacadeCourante(this.indexVueCourante);
+        this.indexZoneSelectionnee = -1;
     }
 
     public int getNombreZonesFacadeCourante() {

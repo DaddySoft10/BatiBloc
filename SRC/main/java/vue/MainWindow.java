@@ -1,6 +1,7 @@
 package vue;
 
 import domaine.Controller;
+import domaine.ImperialParser;
 import dto.ZoneDTO;
 
 import javax.swing.*;
@@ -31,6 +32,7 @@ public class MainWindow extends JFrame {
     private JTextField txtEchelle;
     private JTextField txtNombreBlocs;
     private JLabel lblNombreBlocs;
+    private JTextArea txtResultatEstimation;
 
     // Attribut pour boutons radio
     private ButtonGroup typeGroup;
@@ -120,10 +122,14 @@ public class MainWindow extends JFrame {
         }
 
         this.txtForme.setText(formaterTypeForme(zoneSelectionnee.getTypeForme()));
-        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getLargeur()));
-        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getHauteur()));
-        this.txtPosX.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getX()));
-        this.txtPosY.setText(String.format(java.util.Locale.US, "%.4f", zoneSelectionnee.getY()));
+        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.2f",
+                ImperialParser.metresEnPouces(zoneSelectionnee.getLargeur())));
+        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.2f",
+                ImperialParser.metresEnPouces(zoneSelectionnee.getHauteur())));
+        this.txtPosX.setText(String.format(java.util.Locale.US, "%.2f",
+                ImperialParser.metresEnPouces(zoneSelectionnee.getX())));
+        this.txtPosY.setText(String.format(java.util.Locale.US, "%.2f",
+                ImperialParser.metresEnPouces(zoneSelectionnee.getY())));
         if (this.btnSupprimerZone != null) {
             this.btnSupprimerZone.setEnabled(true);
         }
@@ -156,6 +162,13 @@ public class MainWindow extends JFrame {
         this.txtNombreBlocs.setText("0");
 
         this.lblNombreBlocs = new JLabel("Nombre de Blocs Total : 0");
+
+        this.txtResultatEstimation = new JTextArea(5, 20);
+        this.txtResultatEstimation.setEditable(false);
+        this.txtResultatEstimation.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        this.txtResultatEstimation.setBackground(new Color(245, 245, 245));
+        this.txtResultatEstimation.setLineWrap(true);
+        this.txtResultatEstimation.setWrapStyleWord(true);
 
         this.txtNomNouvelleVue = new JTextField("Vue rognee");
 
@@ -340,11 +353,8 @@ public class MainWindow extends JFrame {
         // Appel au controleur pour executer la logique d'affaires
         String resultat = this.controller.simulerPlacement(largeur, hauteur);
 
-        // Affichage du bilan final
-        JOptionPane.showMessageDialog(this,
-                resultat,
-                "Estimation des couts - BatiBloc",
-                JOptionPane.INFORMATION_MESSAGE);
+        // Affichage du bilan dans le panneau lateral
+        this.txtResultatEstimation.setText(resultat);
     }
 
     private JPanel buildLeftSideBar() {
@@ -444,10 +454,10 @@ public class MainWindow extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         this.addFormField(rightSideBar, gbc, 0, "Forme :", this.txtForme);
-        this.addFormField(rightSideBar, gbc, 1, "Largeur (m) :", this.txtLargeur);
-        this.addFormField(rightSideBar, gbc, 2, "Hauteur (m) :", this.txtHauteur);
-        this.addFormField(rightSideBar, gbc, 3, "Position X (m) :", this.txtPosX);
-        this.addFormField(rightSideBar, gbc, 4, "Position Y (m) :", this.txtPosY);
+        this.addFormField(rightSideBar, gbc, 1, "Largeur (ex: 3' 6\" ou 42) :", this.txtLargeur);
+        this.addFormField(rightSideBar, gbc, 2, "Hauteur (ex: 2' 0\" ou 24) :", this.txtHauteur);
+        this.addFormField(rightSideBar, gbc, 3, "Position X (ex: 1' 6\" ou 18) :", this.txtPosX);
+        this.addFormField(rightSideBar, gbc, 4, "Position Y (ex: 0' 6\" ou 6) :", this.txtPosY);
         this.addFormField(rightSideBar, gbc, 5, "Echelle (pouces / pixel) :", this.txtEchelle);
 
         gbc.gridx = 0;
@@ -486,6 +496,13 @@ public class MainWindow extends JFrame {
         rightSideBar.add(this.lblNombreBlocs, gbc);
 
         gbc.gridy = 11;
+        gbc.weighty = 0.0;
+        gbc.insets = new Insets(10, 5, 5, 5);
+        JScrollPane scrollResultat = new JScrollPane(this.txtResultatEstimation);
+        scrollResultat.setBorder(BorderFactory.createTitledBorder("Resultat estimation"));
+        rightSideBar.add(scrollResultat, gbc);
+
+        gbc.gridy = 12;
         gbc.weighty = 1.0;
         rightSideBar.add(Box.createGlue(), gbc);
 
@@ -721,10 +738,10 @@ public class MainWindow extends JFrame {
         try {
             this.appliquerEchelleDepuisChamp();
 
-            double x = Double.parseDouble(this.txtPosX.getText().replace(',', '.'));
-            double y = Double.parseDouble(this.txtPosY.getText().replace(',', '.'));
-            double largeur = Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
-            double hauteur = Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
+            double x = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosX.getText()));
+            double y = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosY.getText()));
+            double largeur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtLargeur.getText()));
+            double hauteur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtHauteur.getText()));
 
             if (largeur <= 0 || hauteur <= 0) {
                 throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
@@ -808,10 +825,10 @@ public class MainWindow extends JFrame {
                 return;
             }
 
-            double x = Double.parseDouble(this.txtPosX.getText().replace(',', '.'));
-            double y = Double.parseDouble(this.txtPosY.getText().replace(',', '.'));
-            double largeur = Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
-            double hauteur = Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
+            double x = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosX.getText()));
+            double y = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosY.getText()));
+            double largeur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtLargeur.getText()));
+            double hauteur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtHauteur.getText()));
 
             String forme = this.getFormeSaisie();
             String typeZone = this.getTypeZoneSelectionne();
