@@ -276,7 +276,7 @@ public class DrawingPanel extends JPanel {
                 || image.getWidth() <= 0 || image.getHeight() <= 0) {
             return null;
         }
-        int xEcran = (int) Math.round(context.x + (xMonde / image.getWidth())  * context.largeur);
+        int xEcran = (int) Math.round(context.x + (xMonde / image.getWidth()) * context.largeur);
         int yEcran = (int) Math.round(context.y + (yMonde / image.getHeight()) * context.hauteur);
         return new int[]{xEcran, yEcran};
     }
@@ -760,10 +760,10 @@ public class DrawingPanel extends JPanel {
             } else if ("TRIANGULAIRE".equals(typeForme)) {
                 int sommetX = (int) Math.round(context.x + ((imageX + imageLargeur / 2) / imageVue.getWidth()) * context.largeur);
                 int sommetY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
-                int basGX   = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
-                int basGY   = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
-                int basDX   = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
-                int basDY   = basGY;
+                int basGX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+                int basGY = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
+                int basDX = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
+                int basDY = basGY;
 
                 java.awt.Polygon triangle = new java.awt.Polygon();
                 triangle.addPoint(sommetX, sommetY);
@@ -791,11 +791,11 @@ public class DrawingPanel extends JPanel {
 
                 int hautGX = (int) Math.round(context.x + ((imageX + retraitImage) / imageVue.getWidth()) * context.largeur);
                 int hautDX = (int) Math.round(context.x + ((imageX + imageLargeur - retraitImage) / imageVue.getWidth()) * context.largeur);
-                int hautY  = (int) Math.round(context.y + (yCoupeImage / imageVue.getHeight()) * context.hauteur);
+                int hautY = (int) Math.round(context.y + (yCoupeImage / imageVue.getHeight()) * context.hauteur);
 
-                int basGX  = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
-                int basDX  = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
-                int basY   = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
+                int basGX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+                int basDX = (int) Math.round(context.x + ((imageX + imageLargeur) / imageVue.getWidth()) * context.largeur);
+                int basY = (int) Math.round(context.y + ((imageY + imageHauteur) / imageVue.getHeight()) * context.hauteur);
 
                 java.awt.Polygon trapeze = new java.awt.Polygon();
                 trapeze.addPoint(hautGX, hautY);
@@ -849,14 +849,14 @@ public class DrawingPanel extends JPanel {
 
         int taille = 8;
         int[][] poignees = {
-            {screenX,                      screenY},
-            {screenX + screenLargeur,      screenY},
-            {screenX,                      screenY + screenHauteur},
-            {screenX + screenLargeur,      screenY + screenHauteur},
-            {screenX + screenLargeur / 2,  screenY},
-            {screenX + screenLargeur / 2,  screenY + screenHauteur},
-            {screenX,                      screenY + screenHauteur / 2},
-            {screenX + screenLargeur,      screenY + screenHauteur / 2}
+                {screenX, screenY},
+                {screenX + screenLargeur, screenY},
+                {screenX, screenY + screenHauteur},
+                {screenX + screenLargeur, screenY + screenHauteur},
+                {screenX + screenLargeur / 2, screenY},
+                {screenX + screenLargeur / 2, screenY + screenHauteur},
+                {screenX, screenY + screenHauteur / 2},
+                {screenX + screenLargeur, screenY + screenHauteur / 2}
         };
         for (int[] poignee : poignees) {
             int px = poignee[0] - taille / 2;
@@ -898,23 +898,23 @@ public class DrawingPanel extends JPanel {
                 continue;
             }
 
-            double imageX       = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
-            double imageY       = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
+            double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
+            double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
             double imageLargeur = zone.getLargeur() / metresParPixel;
             double imageHauteur = zone.getHauteur() / metresParPixel;
 
-            int screenX       = (int) Math.round(context.x + (imageX / imageVue.getWidth())          * context.largeur);
-            int screenY       = (int) Math.round(context.y + (imageY / imageVue.getHeight())         * context.hauteur);
-            int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth())  * context.largeur);
+            int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+            int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+            int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
             int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
 
             if (screenLargeur <= 0 || screenHauteur <= 0) {
                 continue;
             }
 
-            double poucesParMetre     = 39.3701;
-            double largeurZonePouces  = zone.getLargeur() * poucesParMetre;
-            double hauteurZonePouces  = zone.getHauteur() * poucesParMetre;
+            double poucesParMetre = 39.3701;
+            double largeurZonePouces = zone.getLargeur() * poucesParMetre;
+            double hauteurZonePouces = zone.getHauteur() * poucesParMetre;
 
             double pixelsParPouceX = (screenLargeur > 0 && largeurZonePouces > 0)
                     ? screenLargeur / largeurZonePouces : 1.0;
@@ -922,15 +922,15 @@ public class DrawingPanel extends JPanel {
                     ? screenHauteur / hauteurZonePouces : 1.0;
 
             double blocLargeurPx = 12.0 * pixelsParPouceX;
-            double blocHauteurPx =  8.0 * pixelsParPouceY;
+            double blocHauteurPx = 8.0 * pixelsParPouceY;
 
             if (blocLargeurPx < 2 || blocHauteurPx < 2) {
                 continue;
             }
 
             int nbColonnes = (int) Math.max(1, Math.floor(largeurZonePouces / 12.0));
-            int nbRangees  = (int) Math.max(1, Math.floor(hauteurZonePouces /  8.0));
-            int nbBlocs    = nbColonnes * nbRangees;
+            int nbRangees = (int) Math.max(1, Math.floor(hauteurZonePouces / 8.0));
+            int nbBlocs = nbColonnes * nbRangees;
 
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setStroke(new BasicStroke(0.8f));
@@ -1010,6 +1010,7 @@ public class DrawingPanel extends JPanel {
 
         return new int[]{centreX, centreY};
     }
+
     private void dessinerLigneTronquage(Graphics g) {
         if (!this.tronquageEnCours) {
             return;
@@ -1021,6 +1022,7 @@ public class DrawingPanel extends JPanel {
         g2d.drawLine(0, this.yTronquagePanel, this.getWidth(), this.yTronquagePanel);
         g2d.dispose();
     }
+
     private void demarrerTronquage(int xPanel, int yPanel) {
         if (this.creationEnCours || this.rognageEnCours || this.deplacementZoneEnCours
                 || this.modeActuel != ModeInteraction.TRONQUAGE) {
@@ -1037,7 +1039,8 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        if (!"TRIANGULAIRE".equals(zone.getTypeForme())) {
+        if (!"TRIANGULAIRE".equals(zone.getTypeForme())
+                && !"TRIANGULAIRE_TRONQUEE".equals(zone.getTypeForme())) {
             return;
         }
 
@@ -1078,6 +1081,7 @@ public class DrawingPanel extends JPanel {
         this.yTronquagePanel = Math.max(yHaut, Math.min(yPanel, yBas));
         this.repaint();
     }
+
     private void mettreAJourTronquageDepuisSouris(int xPanel, int yPanel) {
         if (!this.tronquageEnCours || this.indexZoneTronquage < 0) {
             return;
@@ -1108,6 +1112,7 @@ public class DrawingPanel extends JPanel {
         this.yTronquagePanel = Math.max(yHaut, Math.min(yPanel, yBas));
         this.repaint();
     }
+
     private void terminerTronquage(int xPanel, int yPanel) {
         if (!this.tronquageEnCours || this.indexZoneTronquage < 0) {
             return;
@@ -1149,8 +1154,12 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        double ratioCoupe = (double) (this.yTronquagePanel - yHaut) / hauteurScreen;
-        ratioCoupe = Math.max(0.05, Math.min(ratioCoupe, 0.95));
+        double ratioCoupeLigne = (double) (this.yTronquagePanel - yHaut) / hauteurScreen;
+        ratioCoupeLigne = Math.max(0.05, Math.min(ratioCoupeLigne, 0.95));
+
+        double ratioActuel = zone.getRatioCoupe();
+        double nouveauRatioCoupe = Math.max(ratioActuel, ratioCoupeLigne);
+        nouveauRatioCoupe = Math.max(0.05, Math.min(nouveauRatioCoupe, 0.95));
 
         this.mainWindow.getController().modifierZone(
                 this.indexZoneTronquage,
@@ -1160,7 +1169,7 @@ public class DrawingPanel extends JPanel {
                 zone.getHauteur(),
                 "TRIANGULAIRE_TRONQUEE",
                 zone.getTypeZone(),
-                ratioCoupe
+                nouveauRatioCoupe
         );
 
         this.tronquageEnCours = false;
