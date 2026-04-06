@@ -55,8 +55,8 @@ Pour la remise :
 3. Creer la branche de remise :
 
 ```bash
-git checkout -b remise_3
-git push origin remise_3
+git checkout -b remise_4
+git push origin remise_4
 ```
 
 ## Equipe
