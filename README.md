@@ -1,63 +1,70 @@
 # BatiBloc - TP4
 
 ## Description
-BatiBloc est une application permettant d'importer un plan en format PDF et de gerer differentes vues du plan.
+BatiBloc est une application permettant d'importer un plan en format PDF,
+de gérer différentes vues du plan et de simuler le placement de blocs
+de construction sur des zones définies.
 
-Cette version correspond au **livrable 4** du projet. Elle permet au client de tester certaines fonctionnalites principales de l'application.
+Cette version correspond au **livrable 4** du projet.
 
-## Prerequis
-- Java 21 ou plus recent
+## Prérequis
+- Java 25 ou plus récent
 - Un fichier PDF contenant un plan (plusieurs pages possibles)
 
 ## Lancer l'application
-
-1. Telecharger ou cloner le projet.
+1. Télécharger ou cloner le projet.
 2. Se placer dans le dossier du projet.
-3. Executer le fichier jar :
-
-```bash
-java -jar equipe05.jar
-```
-
-## Fonctionnalites disponibles
+3. Exécuter le fichier jar :
+## Fonctionnalités disponibles
 
 ### 1. Importation d'un plan PDF
 L'utilisateur peut importer un fichier PDF contenant un ou plusieurs plans.
+Chaque page du PDF correspond à une vue indépendante.
 
-Etapes :
-1. Ouvrir l'application.
-2. Cliquer sur **Importer un PDF**.
-3. Selectionner un fichier PDF sur votre ordinateur.
+### 2. Gestion des vues
+- Navigation entre les différentes vues
+- Suppression d'une vue
+- Rognage d'une vue pour ne conserver qu'une partie spécifique
+- Création d'une nouvelle vue à partir d'un rognage
 
-### 2. Visualisation des vues
-Apres l'importation du PDF, l'utilisateur peut naviguer entre les differentes vues correspondant aux pages du plan.
+### 3. Gestion des zones
+- Création de zones (Rectangle, Triangle, Triangle tronqué)
+- Types de zones : Armature en blocs, Armature classique, Ouverture
+- Sélection d'une zone avec contour rouge et 8 poignées
+- Déplacement d'une zone avec la souris
+- Modification des dimensions via le panneau d'édition (format impérial)
+- Suppression d'une zone (touche DELETE ou bouton)
+- Chaque vue possède ses propres zones indépendantes
 
-### 3. Suppression d'une vue
-L'utilisateur peut supprimer une ou plusieurs vues du plan importe.
+### 4. Mesures impériales
+Les dimensions sont saisies et affichées en pouces impériaux.
+Formats acceptés : `3' 6"`, `3'`, `6"`, `42` (pouces bruts)
 
-### 4. Rognage d'une vue
-Il est possible de rogner une vue pour ne conserver qu'une partie specifique du plan.
+### 5. Simulation du placement des blocs
+- Lancement de la simulation sur toutes les zones de type Bloc
+- Respect des contraintes de taille minimale (6 pouces)
+- Affichage du nombre total de blocs dans l'interface
+- Résultat affiché dans le panneau (sans popup)
+
+### 6. Zoom
+- Zoom avec la molette de la souris
+- Le zoom est centré autour de la position de la souris
+- Boutons Zoom+ et Zoom- disponibles dans la barre d'outils
+- Bouton Recentrer pour réinitialiser la vue
 
 ## Structure du projet
-Le projet utilise une architecture avec un **controleur** qui gere les interactions entre la vue et la logique de l'application.
+Le projet suit une architecture MVC :
+- **Domaine** : logique métier (zones, simulation, façades)
+- **Vue** : interface graphique Swing (MainWindow, DrawingPanel)
+- **DTO** : transfert de données entre domaine et vue
 
-Le controleur :
-- ne retourne pas d'objets complexes du domaine
-- ne prend pas d'objets complexes du domaine comme parametres
-- communique avec la vue via des donnees simples (DTO si utilises)
+Le contrôleur :
+- Ne retourne pas d'objets complexes du domaine
+- Ne prend pas d'objets complexes du domaine comme paramètres
+- Communique avec la vue via des DTOs
 
-## Depot Git
-Le projet est remis via le depot Git.
+## Dépôt Git
+Le projet est remis via le dépôt Git — branche `remise_4`.
 
-Pour la remise :
-1. Placer le fichier `equipe05.jar` a la racine du projet.
-2. Verifier que la branche `main` contient tout le code.
-3. Creer la branche de remise :
-
-```bash
-git checkout -b remise_3
-git push origin remise_3
-```
-
-## Equipe
-Equipe 05 - Projet BatiBloc
+## Équipe
+Équipe 05 — Projet BatiBloc — Hiver 2026
