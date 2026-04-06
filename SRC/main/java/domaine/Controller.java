@@ -16,6 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import domaine.factory.ZoneFactory;
+import domaine.TypeZone;
+import domaine.TypeForme;
+
 public class Controller {
     private static final double ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL = 1.0;
     private static final double METRES_VERS_POUCES = 39.3701;
@@ -254,17 +258,31 @@ public class Controller {
                 largeurPouces, hauteurPouces, nbRangees, blocsParRangee, nbTotalBlocs, coutTotal);
     }
 
-    public void ajouterZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
+    public void ajouterZone(double x, double y, double largeur, double hauteur,
+                                        String typeForme, String typeZone, double ratioCoupe) {
         double xReel = this.convertirPixelsEnCoordonneeReelle(x);
         double yReel = this.convertirPixelsEnCoordonneeReelle(y);
-        Zone nouvelleZone = this.creerZone(xReel, yReel, largeur, hauteur, typeForme, typeZone);
+        double largeurReelle = this.convertirPixelsEnCoordonneeReelle(largeur);
+        double hauteurReelle = this.convertirPixelsEnCoordonneeReelle(hauteur);
+
+        Zone nouvelleZone = ZoneFactory.creerDepuisTexte(
+                xReel,
+                yReel,
+                largeurReelle,
+                hauteurReelle,
+                typeForme,
+                typeZone,
+                ratioCoupe
+        );
+
         this.batiment.ajouterZone(nouvelleZone);
         this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
         this.invaliderSimulationBlocs();
+
     }
 
-    public void ajouterZoneDepuisPanneau(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        Zone nouvelleZone = this.creerZone(x, y, largeur, hauteur, typeForme, typeZone);
+    public void ajouterZoneDepuisPanneau(double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
+        Zone nouvelleZone = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone, ratioCoupe);
         this.batiment.ajouterZone(nouvelleZone);
         this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
         this.invaliderSimulationBlocs();
@@ -285,8 +303,8 @@ public class Controller {
         this.invaliderSimulationBlocs();
     }
 
-    public void modifierZone(int index, double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        Zone zoneModifiee = this.creerZone(x, y, largeur, hauteur, typeForme, typeZone);
+    public void modifierZone(int index, double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
+        Zone zoneModifiee = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone, ratioCoupe);
         this.batiment.getFacadeCourante().modifierZone(index, zoneModifiee);
         this.indexZoneSelectionnee = index;
         this.invaliderSimulationBlocs();
@@ -406,44 +424,11 @@ public class Controller {
             throw new IllegalArgumentException("La zone de blocs ne peut pas etre nulle.");
         }
 
-        double largeurPouces = convertirMetresEnPouces(zone.getLargeur());
-        double hauteurPouces = convertirMetresEnPouces(zone.getHauteur());
-
-        return switch (zone.getTypeForme()) {
-            case RECTANGULAIRE -> SimulateurPlacement.simulerZoneRectangulaire(largeurPouces, hauteurPouces);
-            case TRIANGULAIRE -> SimulateurPlacement.simulerZoneTriangulaire(largeurPouces, hauteurPouces);
-            case TRIANGULAIRE_TRONQUEE -> {
-                double largeurSommetPouces = largeurPouces * RATIO_LARGEUR_SOMMET_TRIANGLE_TRONQUE;
-                yield SimulateurPlacement.simulerZoneTriangulaireTronquee(
-                        largeurPouces,
-                        largeurSommetPouces,
-                        hauteurPouces
-                );
-            }
-        };
+        return domaine.simulation.PlacementStrategyFactory
+                .creer(zone.getTypeForme())
+                .simuler(zone);
     }
 
-    private Zone creerZone(double x, double y, double largeur, double hauteur, String typeForme, String typeZone) {
-        TypeForme forme = this.convertirTypeForme(typeForme);
-        String typeZoneNormalise = this.normaliserTexte(typeZone);
-
-        return switch (typeZoneNormalise) {
-            case "BLOC", "BLOCS" -> new ZoneBloc(x, y, largeur, hauteur, forme);
-            case "CLASSIQUE" -> new ZoneClassique(x, y, largeur, hauteur, forme);
-            default -> throw new IllegalArgumentException("Type de zone invalide.");
-        };
-    }
-
-    private TypeForme convertirTypeForme(String typeForme) {
-        String typeFormeNormalise = this.normaliserTexte(typeForme);
-
-        return switch (typeFormeNormalise) {
-            case "RECTANGULAIRE", "RECTANGLE" -> TypeForme.RECTANGULAIRE;
-            case "TRIANGULAIRE", "TRIANGLE" -> TypeForme.TRIANGULAIRE;
-            case "TRIANGULAIRE_TRONQUEE", "TRIANGULAIRE TRONQUEE", "TRIANGLE TRONQUE" -> TypeForme.TRIANGULAIRE_TRONQUEE;
-            default -> throw new IllegalArgumentException("Type de forme invalide.");
-        };
-    }
 
     private ZoneDTO convertirEnZoneDTO(Zone zone) {
         String typeZone = "ZONE";
@@ -459,15 +444,9 @@ public class Controller {
                 zone.getLargeur(),
                 zone.getHauteur(),
                 zone.getTypeForme().name(),
-                typeZone
+                typeZone,
+                zone.getRatioCoupe()
         );
-    }
-
-    private String normaliserTexte(String valeur) {
-        if (valeur == null || valeur.isBlank()) {
-            throw new IllegalArgumentException("La valeur ne peut pas etre vide.");
-        }
-        return valeur.trim().toUpperCase(Locale.ROOT);
     }
 
     private double convertirMetresEnPouces(double valeurMetres) {

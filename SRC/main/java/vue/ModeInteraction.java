@@ -3,5 +3,6 @@ package vue;
 public enum ModeInteraction {
     SELECTION,
     CREATION,
-    ROGNAGE
+    ROGNAGE,
+    TRONQUAGE
 }
