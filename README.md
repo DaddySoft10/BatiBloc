@@ -6,7 +6,7 @@ BatiBloc est une application permettant d'importer un plan en format PDF et de g
 Cette version correspond au **livrable 4** du projet. Elle permet au client de tester certaines fonctionnalites principales de l'application.
 
 ## Prerequis
-- Java 21 ou plus recent
+- Java 25 ou plus recent
 - Un fichier PDF contenant un plan (plusieurs pages possibles)
 
 ## Lancer l'application
