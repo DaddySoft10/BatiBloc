@@ -2,8 +2,9 @@ package domaine;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.io.Serializable;
 
-public class Plan {
+public class Plan implements Serializable {
     private String cheminFichier;
     private final List<String> vues;
 

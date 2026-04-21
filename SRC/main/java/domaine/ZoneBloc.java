@@ -2,8 +2,9 @@ package domaine;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.io.Serializable;
 
-public class ZoneBloc extends Zone {
+public class ZoneBloc extends Zone implements Serializable {
     private static final String TYPE_ZONE = "BLOC";
     private List<BlocPlace> blocsSimules;
 
@@ -33,7 +34,7 @@ public class ZoneBloc extends Zone {
         this.blocsSimules = new ArrayList<>(blocsSimules);
     }
 
-    public static class BlocPlace {
+    public static class BlocPlace implements Serializable {
         private final double x;
         private final double y;
         private final double largeur;

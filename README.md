@@ -1,11 +1,11 @@
-# BatiBloc - TP4
+# BatiBloc - Livrable 5
 
 ## Description
 BatiBloc est une application permettant d'importer un plan en format PDF,
 de gérer différentes vues du plan et de simuler le placement de blocs
 de construction sur des zones définies.
 
-Cette version correspond au **livrable 4** du projet.
+Cette version correspond au **livrable 5** (version finale) du projet.
 
 ## Prérequis
 - Java 25 ou plus récent
@@ -42,8 +42,10 @@ Formats acceptés : `3' 6"`, `3'`, `6"`, `42` (pouces bruts)
 
 ### 5. Simulation du placement des blocs
 - Lancement de la simulation sur toutes les zones de type Bloc
-- Respect des contraintes de taille minimale (6 pouces)
-- Affichage du nombre total de blocs dans l'interface
+- Respect des contraintes de taille minimale (6 pouces), réutilisation des retailles entre rangées
+- Gestion des ouvertures (linteau, buffers latéraux)
+- Prix par bloc configurable dans le panneau (défaut : 20 $)
+- Affichage du nombre total de blocs et du coût estimé dans l'interface
 - Résultat affiché dans le panneau (sans popup)
 
 ### 6. Zoom
@@ -64,7 +66,7 @@ Le contrôleur :
 - Communique avec la vue via des DTOs
 
 ## Dépôt Git
-Le projet est remis via le dépôt Git — branche `remise_4`.
+Le projet est remis via le dépôt Git — branche `remise_5`.
 
 ## Équipe
 Équipe 05 — Projet BatiBloc — Hiver 2026

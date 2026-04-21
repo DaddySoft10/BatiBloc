@@ -21,24 +21,43 @@ import domaine.TypeZone;
 import domaine.TypeForme;
 
 public class Controller {
-    private static final double ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL = 1.0;
-    private static final double METRES_VERS_POUCES = 39.3701;
     private static final double RATIO_LARGEUR_SOMMET_TRIANGLE_TRONQUE = 0.5;
 
-    private final Batiment batiment;
+    private Batiment batiment;
+    private final domaine.utilitaires.CommandManager commandManager;
     private int indexVueCourante;
     private int indexZoneSelectionnee;
     private List<BufferedImage> imagesVues;
-    private double metresParPixel;
     private int nombreTotalBlocs;
+    private String dernierMessage;
+    private double prixParBloc;
 
     public Controller() {
         this.batiment = new Batiment();
+        this.commandManager = new domaine.utilitaires.CommandManager();
         this.indexVueCourante = -1;
         this.indexZoneSelectionnee = -1;
         this.imagesVues = new ArrayList<>();
-        this.metresParPixel = ECHELLE_PAR_DEFAUT_METRES_PAR_PIXEL;
         this.nombreTotalBlocs = 0;
+        this.dernierMessage = "";
+        this.prixParBloc = 20.0;
+    }
+
+    public double getPrixParBloc() {
+        return this.prixParBloc;
+    }
+
+    public void setPrixParBloc(double prix) {
+        if (prix < 0.0) {
+            throw new IllegalArgumentException("Le prix par bloc ne peut pas etre negatif.");
+        }
+        this.prixParBloc = prix;
+    }
+
+    public String getDernierMessage() {
+        String msg = this.dernierMessage;
+        this.dernierMessage = "";
+        return msg;
     }
 
     public int importerPlanPdf(String cheminFichier) throws IOException {
@@ -142,7 +161,21 @@ public class Controller {
                 zoneValide.width,
                 zoneValide.height
         );
-        this.imagesVues.set(this.indexVueCourante, copierImage(imageRognee));
+        BufferedImage nouvelleImage = copierImage(imageRognee);
+        BufferedImage ancienneImage = copierImage(imageSource);
+        int indexVue = this.indexVueCourante;
+
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            @Override
+            public void execute() {
+                imagesVues.set(indexVue, nouvelleImage);
+            }
+
+            @Override
+            public void undo() {
+                imagesVues.set(indexVue, ancienneImage);
+            }
+        });
     }
 
     public void ajouterVueRognee(int x, int y, int largeur, int hauteur, String nomVue) {
@@ -210,35 +243,37 @@ public class Controller {
         return this.batiment.getFacadeCourante().getZones().size();
     }
 
-    public double getMetresParPixel() {
-        return this.metresParPixel;
+    public double getEchellePoucesParPixel() {
+        if (this.batiment.getFacadeCourante() == null) {
+            return 1.0; // scale default
+        }
+        return this.batiment.getFacadeCourante().getEchellePoucesParPixel();
     }
 
-    public void definirMetresParPixel(double metresParPixel) {
-        if (metresParPixel <= 0.0) {
+    public void definirEchellePoucesParPixel(double echellePoucesParPixel) {
+        if (echellePoucesParPixel <= 0.0) {
             throw new IllegalArgumentException("L'echelle doit etre superieure a 0.");
         }
-        this.metresParPixel = metresParPixel;
+        if (this.batiment.getFacadeCourante() != null) {
+            this.batiment.getFacadeCourante().setEchellePoucesParPixel(echellePoucesParPixel);
+        }
     }
 
     public double convertirPixelsEnCoordonneeReelle(double pixels) {
-        return pixels * this.metresParPixel;
+        return pixels * this.getEchellePoucesParPixel();
     }
 
     public double convertirCoordonneeReelleEnPixels(double coordonneeReelle) {
-        return coordonneeReelle / this.metresParPixel;
+        return coordonneeReelle / this.getEchellePoucesParPixel();
     }
 
-    public String simulerPlacement(double largeurMetres, double hauteurMetres) {
-        //  (1 metre = 39.3701 pouces)
-        double largeurPouces = convertirMetresEnPouces(largeurMetres);
-        double hauteurPouces = convertirMetresEnPouces(hauteurMetres);
+    public String simulerPlacement(double largeurPouces, double hauteurPouces) {
 
         // Constantes du domaine
-        final double BLOC_L = 12.0;
-        final double BLOC_H = 8.0;
-        final double PRIX_UNITAIRE = 20.0; // Base sur le calcul24 blocs = 480$ (480/24 = 20)
-        final double MIN_RETAILLE = 6.0;
+        final double BLOC_L = domaine.SimulateurPlacement.BLOC_LARGEUR;
+        final double BLOC_H = domaine.SimulateurPlacement.BLOC_HAUTEUR;
+        final double PRIX_UNITAIRE = this.prixParBloc;
+        final double MIN_RETAILLE = domaine.SimulateurPlacement.MIN_RETAILLE;
 
         // 1 Calcul (Hauteur)
         int nbRangees = (int) (hauteurPouces / BLOC_H);
@@ -283,27 +318,73 @@ public class Controller {
         double largeurReelle = this.convertirPixelsEnCoordonneeReelle(largeur);
         double hauteurReelle = this.convertirPixelsEnCoordonneeReelle(hauteur);
 
+        if ("BLOC".equals(typeZone) && "RECTANGULAIRE".equals(typeForme)) {
+            int nbRangees = (int) Math.ceil(hauteurReelle / domaine.SimulateurPlacement.BLOC_HAUTEUR);
+            double hauteurAjustee = nbRangees * domaine.SimulateurPlacement.BLOC_HAUTEUR;
+            if (Math.abs(hauteurAjustee - hauteurReelle) > 0.001) {
+                this.dernierMessage = "Hauteur ajustee de " + domaine.ImperialParser.formatterImperialCourt(hauteurReelle) 
+                                    + " a " + domaine.ImperialParser.formatterImperialCourt(hauteurAjustee);
+                hauteurReelle = hauteurAjustee;
+            } else {
+                this.dernierMessage = "";
+            }
+        }
+
         Zone nouvelleZone = ZoneFactory.creerDepuisTexte(
-                xReel,
-                yReel,
-                largeurReelle,
-                hauteurReelle,
-                typeForme,
-                typeZone,
-                ratioCoupe
+                xReel, yReel, largeurReelle, hauteurReelle, typeForme, typeZone, ratioCoupe
         );
 
-        this.batiment.ajouterZone(nouvelleZone);
-        this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
-        this.invaliderSimulationBlocs();
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            private final int index = batiment.getFacadeCourante().getZones().size();
 
+            @Override
+            public void execute() {
+                batiment.getFacadeCourante().ajouterZone(index, nouvelleZone);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones();
+            }
+
+            @Override
+            public void undo() {
+                batiment.getFacadeCourante().supprimerZone(index);
+                indexZoneSelectionnee = -1;
+                lancerSimulationToutesLesZones();
+            }
+        });
     }
 
     public void ajouterZoneDepuisPanneau(double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
+        if ("BLOC".equals(typeZone) && "RECTANGULAIRE".equals(typeForme)) {
+            int nbRangees = (int) Math.ceil(hauteur / domaine.SimulateurPlacement.BLOC_HAUTEUR);
+            double hauteurAjustee = nbRangees * domaine.SimulateurPlacement.BLOC_HAUTEUR;
+            if (Math.abs(hauteurAjustee - hauteur) > 0.001) {
+                this.dernierMessage = "Hauteur ajustee de " + domaine.ImperialParser.formatterImperialCourt(hauteur) 
+                                    + " a " + domaine.ImperialParser.formatterImperialCourt(hauteurAjustee);
+                hauteur = hauteurAjustee;
+            } else {
+                this.dernierMessage = "";
+            }
+        }
+
         Zone nouvelleZone = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone, ratioCoupe);
-        this.batiment.ajouterZone(nouvelleZone);
-        this.indexZoneSelectionnee = this.batiment.getFacadeCourante().getZones().size() - 1;
-        this.invaliderSimulationBlocs();
+        
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            private final int index = batiment.getFacadeCourante().getZones().size();
+
+            @Override
+            public void execute() {
+                batiment.getFacadeCourante().ajouterZone(index, nouvelleZone);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones();
+            }
+
+            @Override
+            public void undo() {
+                batiment.getFacadeCourante().supprimerZone(index);
+                indexZoneSelectionnee = -1;
+                lancerSimulationToutesLesZones();
+            }
+        });
     }
 
     public void supprimerZone(int index) {
@@ -312,20 +393,66 @@ public class Controller {
             return;
         }
 
-        this.batiment.getFacadeCourante().supprimerZone(index);
-        if (this.indexZoneSelectionnee == index) {
-            this.indexZoneSelectionnee = -1;
-        } else if (this.indexZoneSelectionnee > index) {
-            this.indexZoneSelectionnee -= 1;
-        }
-        this.invaliderSimulationBlocs();
+        Zone zoneSupprimee = zones.get(index);
+        final int oldIndexSelectionnee = this.indexZoneSelectionnee;
+
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            @Override
+            public void execute() {
+                batiment.getFacadeCourante().supprimerZone(index);
+                if (indexZoneSelectionnee == index) {
+                    indexZoneSelectionnee = -1;
+                } else if (indexZoneSelectionnee > index) {
+                    indexZoneSelectionnee -= 1;
+                }
+                lancerSimulationToutesLesZones();
+            }
+
+            @Override
+            public void undo() {
+                batiment.getFacadeCourante().ajouterZone(index, zoneSupprimee);
+                indexZoneSelectionnee = oldIndexSelectionnee;
+                lancerSimulationToutesLesZones();
+            }
+        });
     }
 
     public void modifierZone(int index, double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) {
+            return;
+        }
+
+        if ("BLOC".equals(typeZone) && "RECTANGULAIRE".equals(typeForme)) {
+            int nbRangees = (int) Math.ceil(hauteur / domaine.SimulateurPlacement.BLOC_HAUTEUR);
+            double hauteurAjustee = nbRangees * domaine.SimulateurPlacement.BLOC_HAUTEUR;
+            if (Math.abs(hauteurAjustee - hauteur) > 0.001) {
+                this.dernierMessage = "Hauteur ajustee de " + domaine.ImperialParser.formatterImperialCourt(hauteur) 
+                                    + " a " + domaine.ImperialParser.formatterImperialCourt(hauteurAjustee);
+                hauteur = hauteurAjustee;
+            } else {
+                this.dernierMessage = "";
+            }
+        }
+        
+        Zone zoneAncienne = zones.get(index);
         Zone zoneModifiee = ZoneFactory.creerDepuisTexte(x, y, largeur, hauteur, typeForme, typeZone, ratioCoupe);
-        this.batiment.getFacadeCourante().modifierZone(index, zoneModifiee);
-        this.indexZoneSelectionnee = index;
-        this.invaliderSimulationBlocs();
+
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            @Override
+            public void execute() {
+                batiment.getFacadeCourante().modifierZone(index, zoneModifiee);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones();
+            }
+
+            @Override
+            public void undo() {
+                batiment.getFacadeCourante().modifierZone(index, zoneAncienne);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones();
+            }
+        });
     }
 
     public List<ZoneDTO> getZones() {
@@ -376,11 +503,32 @@ public class Controller {
             return;
         }
 
-        Zone zone = zones.get(index);
-        zone.setX(zone.getX() + dx);
-        zone.setY(zone.getY() + dy);
-        this.indexZoneSelectionnee = index;
-        this.invaliderSimulationBlocs();
+        Zone zoneAncienne = zones.get(index);
+        // On doit utiliser factory pour creer une copie profonde si on bouge
+        Zone zoneDeplacee = ZoneFactory.creerDepuisTexte(
+                zoneAncienne.getX() + dx,
+                zoneAncienne.getY() + dy,
+                zoneAncienne.getLargeur(), zoneAncienne.getHauteur(),
+                zoneAncienne.getTypeForme().name(),
+                zoneAncienne instanceof ZoneBloc ? "BLOC" : (zoneAncienne instanceof domaine.ZoneClassique ? "CLASSIQUE" : "AUTRE"),
+                zoneAncienne.getRatioCoupe()
+        );
+
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            @Override
+            public void execute() {
+                batiment.getFacadeCourante().modifierZone(index, zoneDeplacee);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones(); // TODO: call only for visual feedback or do it in one go
+            }
+
+            @Override
+            public void undo() {
+                batiment.getFacadeCourante().modifierZone(index, zoneAncienne);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones();
+            }
+        });
     }
 
     public void supprimerZoneSelectionnee() {
@@ -398,17 +546,52 @@ public class Controller {
     public void lancerSimulationToutesLesZones() {
         int total = 0;
 
+        // Vider les anciens blocs de toutes les zones
         for (Zone zone : this.batiment.getFacadeCourante().getZones()) {
-            if (!(zone instanceof ZoneBloc zoneBloc)) {
-                continue;
+            if (zone instanceof ZoneBloc zoneBloc) {
+                zoneBloc.setBlocsSimules(new java.util.ArrayList<>());
             }
+        }
 
-            List<ZoneBloc.BlocPlace> blocsSimules = this.lancerSimulationZone(zoneBloc);
-            zoneBloc.setBlocsSimules(blocsSimules);
-            total += blocsSimules.size();
+        // Simuler pour toute la facade
+        List<ZoneBloc.BlocPlace> blocsGlobaux = domaine.SimulateurPlacement.simulerFacade(this.batiment.getFacadeCourante().getZones());
+
+        // Répartir les blocs vers les zones visuelles pour affichage
+        for (ZoneBloc.BlocPlace bloc : blocsGlobaux) {
+            ZoneBloc cible = null;
+            for (Zone zone : this.batiment.getFacadeCourante().getZones()) {
+                if (zone instanceof ZoneBloc zoneBloc) {
+                    if (bloc.getX() + 0.1 >= zone.getX() && bloc.getX() + 0.1 <= zone.getX() + zone.getLargeur() &&
+                        bloc.getY() + 0.1 >= zone.getY() && bloc.getY() + 0.1 <= zone.getY() + zone.getHauteur()) {
+                        cible = zoneBloc;
+                        break;
+                    }
+                }
+            }
+            if (cible != null) {
+                double relX = bloc.getX() - cible.getX();
+                double relY = bloc.getY() - cible.getY();
+                
+                List<ZoneBloc.BlocPlace> liste = new java.util.ArrayList<>(cible.getBlocsSimules());
+                liste.add(new ZoneBloc.BlocPlace(relX, relY, bloc.getLargeur(), bloc.getHauteur(), bloc.isRetaille()));
+                cible.setBlocsSimules(liste);
+                total++;
+            }
         }
 
         this.nombreTotalBlocs = total;
+    }
+
+    public void annulerAction() {
+        if (this.commandManager.canUndo()) {
+            this.commandManager.undo();
+        }
+    }
+
+    public void refaireAction() {
+        if (this.commandManager.canRedo()) {
+            this.commandManager.redo();
+        }
     }
 
     public int getNombreTotalBlocs() {
@@ -437,21 +620,52 @@ public class Controller {
         return copie;
     }
 
-    private List<ZoneBloc.BlocPlace> lancerSimulationZone(ZoneBloc zone) {
-        if (zone == null) {
-            throw new IllegalArgumentException("La zone de blocs ne peut pas etre nulle.");
+    public void sauvegarderProjet(String cheminFichier) throws java.io.IOException {
+        java.util.List<byte[]> imagesSer = new java.util.ArrayList<>();
+        if (this.imagesVues != null) {
+            for (BufferedImage img : this.imagesVues) {
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                javax.imageio.ImageIO.write(img, "PNG", baos);
+                imagesSer.add(baos.toByteArray());
+            }
         }
-
-        return domaine.simulation.PlacementStrategyFactory
-                .creer(zone.getTypeForme())
-                .simuler(zone);
+        
+        ProjetData data = new ProjetData(this.batiment, this.indexVueCourante, imagesSer);
+        
+        try (java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(new java.io.FileOutputStream(cheminFichier))) {
+            oos.writeObject(data);
+        }
     }
 
+    public void chargerProjet(String cheminFichier) throws java.io.IOException, ClassNotFoundException {
+        try (java.io.ObjectInputStream ois = new java.io.ObjectInputStream(new java.io.FileInputStream(cheminFichier))) {
+            ProjetData data = (ProjetData) ois.readObject();
+            this.batiment = data.getBatiment();
+            this.indexVueCourante = data.getIndexVueCourante();
+            
+            if (data.getImagesVuesPng() != null) {
+                this.imagesVues = new java.util.ArrayList<>();
+                for (byte[] bytes : data.getImagesVuesPng()) {
+                    java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(bytes);
+                    this.imagesVues.add(javax.imageio.ImageIO.read(bais));
+                }
+            } else {
+                this.imagesVues = new java.util.ArrayList<>();
+            }
+            
+            this.indexZoneSelectionnee = -1;
+            this.commandManager.clear();
+        }
+    }
 
     private ZoneDTO convertirEnZoneDTO(Zone zone) {
         String typeZone = "ZONE";
-        if (zone instanceof ZoneBloc) {
+        java.util.List<dto.BlocPlaceDTO> dtos = new java.util.ArrayList<>();
+        if (zone instanceof ZoneBloc zb) {
             typeZone = "BLOC";
+            for (ZoneBloc.BlocPlace bp : zb.getBlocsSimules()) {
+                dtos.add(new dto.BlocPlaceDTO(bp.getX(), bp.getY(), bp.getLargeur(), bp.getHauteur(), bp.isRetaille()));
+            }
         } else if (zone instanceof ZoneClassique) {
             typeZone = "CLASSIQUE";
         }
@@ -463,12 +677,9 @@ public class Controller {
                 zone.getHauteur(),
                 zone.getTypeForme().name(),
                 typeZone,
-                zone.getRatioCoupe()
+                zone.getRatioCoupe(),
+                dtos
         );
-    }
-
-    private double convertirMetresEnPouces(double valeurMetres) {
-        return valeurMetres * METRES_VERS_POUCES;
     }
 
     private void invaliderSimulationBlocs() {

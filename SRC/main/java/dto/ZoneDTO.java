@@ -1,5 +1,8 @@
 package dto;
 
+import java.util.Collections;
+import java.util.List;
+
 public class ZoneDTO {
     private final double x;
     private final double y;
@@ -8,8 +11,9 @@ public class ZoneDTO {
     private final String typeForme;
     private final double ratioCoupe;
     private final String typeZone;
+    private final List<BlocPlaceDTO> blocsSimules;
 
-    public ZoneDTO(double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe) {
+    public ZoneDTO(double x, double y, double largeur, double hauteur, String typeForme, String typeZone, double ratioCoupe, List<BlocPlaceDTO> blocsSimules) {
         this.x = x;
         this.y = y;
         this.largeur = largeur;
@@ -17,6 +21,11 @@ public class ZoneDTO {
         this.typeForme = typeForme == null ? "" : typeForme;
         this.typeZone = typeZone == null ? "" : typeZone;
         this.ratioCoupe = ratioCoupe;
+        this.blocsSimules = blocsSimules == null ? Collections.emptyList() : Collections.unmodifiableList(blocsSimules);
+    }
+
+    public List<BlocPlaceDTO> getBlocsSimules() {
+        return this.blocsSimules;
     }
 
     public double getX() {

@@ -31,6 +31,7 @@ public class MainWindow extends JFrame {
     private JTextField txtNomNouvelleVue;
     private JTextField txtEchelle;
     private JTextField txtNombreBlocs;
+    private JTextField txtPrixParBloc;
     private JLabel lblNombreBlocs;
     private JTextArea txtResultatEstimation;
 
@@ -40,6 +41,7 @@ public class MainWindow extends JFrame {
     private JList<String> listeVues;
     private JLabel lblVueCourante;
     private JButton btnSupprimerZone;
+    private StatusBar statusBar;
 
     public MainWindow() {
         this.controller = new Controller();
@@ -55,6 +57,7 @@ public class MainWindow extends JFrame {
         this.initTopToolBar();
 
         this.drawingPanel = new DrawingPanel(this);
+        this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
         this.installerRaccourciSuppressionZone();
 
         JPanel leftPanel = this.buildLeftSideBar();
@@ -69,6 +72,38 @@ public class MainWindow extends JFrame {
         mainSplit.setContinuousLayout(true);
 
         this.add(mainSplit, BorderLayout.CENTER);
+
+        this.statusBar = new StatusBar();
+        this.add(this.statusBar, BorderLayout.SOUTH);
+
+        this.setupUndoRedoKeybinds();
+    }
+
+    private void setupUndoRedoKeybinds() {
+        KeyStroke undoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+        KeyStroke redoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Y, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+
+        this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(undoKey, "undo");
+        this.getRootPane().getActionMap().put("undo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                controller.annulerAction();
+                drawingPanel.repaint();
+                rafraichirPanneauDroit();
+                statusBar.setMessage("Action annulee.");
+            }
+        });
+
+        this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(redoKey, "redo");
+        this.getRootPane().getActionMap().put("redo", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                controller.refaireAction();
+                drawingPanel.repaint();
+                rafraichirPanneauDroit();
+                statusBar.setMessage("Action refaite.");
+            }
+        });
     }
 
     public Controller getController() {
@@ -122,16 +157,25 @@ public class MainWindow extends JFrame {
         }
 
         this.txtForme.setText(formaterTypeForme(zoneSelectionnee.getTypeForme()));
-        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.2f",
-                ImperialParser.metresEnPouces(zoneSelectionnee.getLargeur())));
-        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.2f",
-                ImperialParser.metresEnPouces(zoneSelectionnee.getHauteur())));
-        this.txtPosX.setText(String.format(java.util.Locale.US, "%.2f",
-                ImperialParser.metresEnPouces(zoneSelectionnee.getX())));
-        this.txtPosY.setText(String.format(java.util.Locale.US, "%.2f",
-                ImperialParser.metresEnPouces(zoneSelectionnee.getY())));
+        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getLargeur()));
+        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getHauteur()));
+        this.txtPosX.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getX()));
+        this.txtPosY.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getY()));
         if (this.btnSupprimerZone != null) {
             this.btnSupprimerZone.setEnabled(true);
+        }
+
+        String msg = this.controller.getDernierMessage();
+        if (msg != null && !msg.isEmpty() && this.statusBar != null) {
+            this.statusBar.setMessage(msg);
+        }
+    }
+
+    public void mettreAJourCoordonnees(double x, double y) {
+        if (this.statusBar != null) {
+            this.statusBar.setCoordonnees(String.format("x: %s  y: %s",
+                ImperialParser.formatterImperialCourt(x),
+                ImperialParser.formatterImperialCourt(y)));
         }
     }
 
@@ -154,12 +198,15 @@ public class MainWindow extends JFrame {
         this.txtEchelle = this.createNumberField();
         this.txtEchelle.setEditable(true);
 
-        double poucesParPixel = this.controller.getMetresParPixel() / 0.0254;
+        double poucesParPixel = this.controller.getEchellePoucesParPixel();
         this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", poucesParPixel));
 
         this.txtNombreBlocs = new JTextField();
         this.txtNombreBlocs.setEditable(false);
         this.txtNombreBlocs.setText("0");
+
+        this.txtPrixParBloc = new JTextField("20.0");
+        this.txtPrixParBloc.setEditable(true);
 
         this.lblNombreBlocs = new JLabel("Nombre de Blocs Total : 0");
 
@@ -234,12 +281,27 @@ public class MainWindow extends JFrame {
         JMenuItem itemImporter = new JMenuItem("Importer un plan PDF...");
         itemImporter.addActionListener(e -> this.importerPlanPdf());
 
+        JMenuItem itemOuvrir = new JMenuItem("Ouvrir un projet...");
+        itemOuvrir.addActionListener(e -> this.ouvrirProjet());
+
         JMenuItem itemSauvegarder = new JMenuItem("Sauvegarder le projet");
+        itemSauvegarder.addActionListener(e -> this.sauvegarderProjet());
+
+        JMenuItem itemExporterVue = new JMenuItem("Exporter la vue courante (PNG)...");
+        itemExporterVue.addActionListener(e -> this.exporterVueCourantePNG());
+
+        JMenuItem itemExporterToutes = new JMenuItem("Exporter toutes les vues (PNG)...");
+        itemExporterToutes.addActionListener(e -> this.exporterToutesLesVuesPNG());
+
         JMenuItem itemQuitter = new JMenuItem("Quitter");
         itemQuitter.addActionListener(e -> this.dispose());
 
         menuFichier.add(itemImporter);
+        menuFichier.add(itemOuvrir);
         menuFichier.add(itemSauvegarder);
+        menuFichier.addSeparator();
+        menuFichier.add(itemExporterVue);
+        menuFichier.add(itemExporterToutes);
         menuFichier.addSeparator();
         menuFichier.add(itemQuitter);
 
@@ -260,24 +322,15 @@ public class MainWindow extends JFrame {
         topToolBar.addSeparator();
 
 
-        JButton btnCalculer = new JButton("Calculer l'estimation");
+        JButton btnCalculer = new JButton("Simulation");
         btnCalculer.addActionListener(e -> this.afficherEstimation());
-        ButtonGroup groupeModes = new ButtonGroup();
-        JToggleButton btnSelection = new JToggleButton("Selection");
-        btnSelection.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.SELECTION));
-        JToggleButton btnCreation = new JToggleButton("Creation");
-        btnCreation.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.CREATION));
-        JToggleButton btnRognage = new JToggleButton("Rognage");
-        btnRognage.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.ROGNAGE));
-        groupeModes.add(btnSelection);
-        groupeModes.add(btnCreation);
-        groupeModes.add(btnRognage);
-        btnCreation.setSelected(true);
 
+        // Les modes sont desormais automatiques:
+        // - SELECTION par defaut (active apres init du DrawingPanel)
+        // - CREATION quand on clique un bouton de forme
+        // - ROGNAGE via le bouton Rogner dans le sidebar
         JToggleButton btnTronquage = new JToggleButton("Tronquer triangle");
         btnTronquage.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.TRONQUAGE));
-        groupeModes.add(btnTronquage);
-        topToolBar.add(btnTronquage);
 
         JButton btnZoomPlus = new JButton("Zoom +");
         btnZoomPlus.addActionListener(e -> {
@@ -297,11 +350,28 @@ public class MainWindow extends JFrame {
             this.mettreAJourChampEchelle();
         });
 
+        JButton btnUndo = new JButton("Undo (Ctrl+Z)");
+        btnUndo.addActionListener(e -> {
+            this.controller.annulerAction();
+            this.rafraichirPanneauDroit();
+            this.drawingPanel.repaint();
+            this.mettreAJourNombreTotalBlocs();
+        });
+
+        JButton btnRedo = new JButton("Redo (Ctrl+Y)");
+        btnRedo.addActionListener(e -> {
+            this.controller.refaireAction();
+            this.rafraichirPanneauDroit();
+            this.drawingPanel.repaint();
+            this.mettreAJourNombreTotalBlocs();
+        });
+
+        topToolBar.add(btnUndo);
+        topToolBar.add(btnRedo);
+        topToolBar.addSeparator();
         topToolBar.add(btnCalculer);
         topToolBar.addSeparator();
-        topToolBar.add(btnSelection);
-        topToolBar.add(btnCreation);
-        topToolBar.add(btnRognage);
+        topToolBar.add(btnTronquage);
         topToolBar.addSeparator();
         topToolBar.add(btnZoomPlus);
         topToolBar.add(btnZoomMoins);
@@ -323,17 +393,11 @@ public class MainWindow extends JFrame {
 
         try {
             int nombrePages = this.controller.importerPlanPdf(fichierSelectionne.getAbsolutePath());
-            JOptionPane.showMessageDialog(this,
-                    "Importation reussie: " + nombrePages + " page(s) detectee(s).",
-                    "Import PDF",
-                    JOptionPane.INFORMATION_MESSAGE);
+            this.statusBar.setMessage("Importation reussie: " + nombrePages + " page(s) detectee(s).");
             this.rafraichirVuesDuPlan();
             this.drawingPanel.repaint();
         } catch (IllegalArgumentException | IOException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Echec de l'importation PDF: " + ex.getMessage(),
-                    "Erreur import PDF",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Echec de l'importation PDF: " + ex.getMessage());
         }
     }
 
@@ -343,10 +407,7 @@ public class MainWindow extends JFrame {
 
         // Validation de base pour eviter les calculs non necessaires
         if (largeur <= 0 || hauteur <= 0) {
-            JOptionPane.showMessageDialog(this,
-                    "Veuillez saisir des dimensions valides (strictement superieures a 0) dans le panneau de droite.",
-                    "Erreur de saisie",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Veuillez saisir des dimensions valides (strictement superieures a 0).");
             return;
         }
 
@@ -373,9 +434,21 @@ public class MainWindow extends JFrame {
         JButton btnTriTronq = new JButton("Triangle tronque");
         btnTriTronq.setMaximumSize(btnSize);
 
-        btnRect.addActionListener(e -> this.txtForme.setText("Rectangle"));
-        btnTri.addActionListener(e -> this.txtForme.setText("Triangle"));
-        btnTriTronq.addActionListener(e -> this.txtForme.setText("Triangle tronque"));
+        btnRect.addActionListener(e -> {
+            this.txtForme.setText("Rectangle");
+            this.drawingPanel.setModeActuel(ModeInteraction.CREATION);
+            this.statusBar.setMessage("Mode Creation: Rectangle. Tracez la zone sur le plan.");
+        });
+        btnTri.addActionListener(e -> {
+            this.txtForme.setText("Triangle");
+            this.drawingPanel.setModeActuel(ModeInteraction.CREATION);
+            this.statusBar.setMessage("Mode Creation: Triangle. Tracez la zone sur le plan.");
+        });
+        btnTriTronq.addActionListener(e -> {
+            this.txtForme.setText("Triangle tronque");
+            this.drawingPanel.setModeActuel(ModeInteraction.CREATION);
+            this.statusBar.setMessage("Mode Creation: Triangle tronque. Tracez la zone sur le plan.");
+        });
 
         leftSideBar.add(btnRect);
         leftSideBar.add(Box.createVerticalStrut(5));
@@ -423,7 +496,10 @@ public class MainWindow extends JFrame {
         leftSideBar.add(Box.createVerticalStrut(6));
         JButton btnRognerVue = new JButton("Rogner vue courante");
         btnRognerVue.setMaximumSize(new Dimension(260, 35));
-        btnRognerVue.addActionListener(e -> this.rognerVueCouranteDepuisSelection());
+        btnRognerVue.addActionListener(e -> {
+            this.drawingPanel.setModeActuel(ModeInteraction.ROGNAGE);
+            this.statusBar.setMessage("Mode Rognage: Tracez la zone a rogner sur le plan.");
+        });
         leftSideBar.add(btnRognerVue);
         leftSideBar.add(Box.createVerticalStrut(6));
         this.txtNomNouvelleVue.setMaximumSize(new Dimension(260, 30));
@@ -487,22 +563,33 @@ public class MainWindow extends JFrame {
         this.btnSupprimerZone.addActionListener(e -> this.supprimerZoneSelectionnee());
         rightSideBar.add(this.btnSupprimerZone, gbc);
 
-        gbc.gridy = 10; // ou le dernier index dispo
+        gbc.gridy = 10;
+        gbc.gridx = 0;
+        gbc.gridwidth = 1;
+        gbc.weightx = 0.0;
+        gbc.insets = new Insets(20, 5, 5, 5);
+        rightSideBar.add(new JLabel("Prix par bloc ($) :"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        gbc.insets = new Insets(20, 5, 5, 5);
+        rightSideBar.add(this.txtPrixParBloc, gbc);
+
+        gbc.gridy = 11;
         gbc.gridx = 0;
         gbc.gridwidth = 2;
-        gbc.insets = new Insets(20, 5, 5, 5);
+        gbc.insets = new Insets(5, 5, 5, 5);
 
         this.lblNombreBlocs.setFont(new Font("Arial", Font.BOLD, 12));
         rightSideBar.add(this.lblNombreBlocs, gbc);
 
-        gbc.gridy = 11;
+        gbc.gridy = 12;
         gbc.weighty = 0.0;
         gbc.insets = new Insets(10, 5, 5, 5);
         JScrollPane scrollResultat = new JScrollPane(this.txtResultatEstimation);
         scrollResultat.setBorder(BorderFactory.createTitledBorder("Resultat estimation"));
         rightSideBar.add(scrollResultat, gbc);
 
-        gbc.gridy = 12;
+        gbc.gridy = 13;
         gbc.weighty = 1.0;
         rightSideBar.add(Box.createGlue(), gbc);
 
@@ -587,21 +674,7 @@ public class MainWindow extends JFrame {
     private void supprimerVueSelectionnee() {
         int indexSelectionne = this.listeVues.getSelectedIndex();
         if (indexSelectionne < 0) {
-            JOptionPane.showMessageDialog(this,
-                    "Veuillez selectionner une vue a supprimer.",
-                    "Suppression de vue",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        String nomVue = this.listeVuesModel.getElementAt(indexSelectionne);
-        int confirmation = JOptionPane.showConfirmDialog(this,
-                "Supprimer " + nomVue + " ?",
-                "Confirmer la suppression",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
-
-        if (confirmation != JOptionPane.YES_OPTION) {
+            this.statusBar.setMessage("Veuillez selectionner une vue a supprimer.");
             return;
         }
 
@@ -611,20 +684,14 @@ public class MainWindow extends JFrame {
             this.mettreAJourNombreTotalBlocs();
             this.drawingPanel.repaint();
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Suppression impossible: " + ex.getMessage(),
-                    "Erreur suppression",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Suppression impossible: " + ex.getMessage());
         }
     }
 
     private void rognerVueCouranteDepuisSelection() {
         Rectangle zoneSelectionnee = this.drawingPanel.getSelectionRognageImage();
         if (zoneSelectionnee == null) {
-            JOptionPane.showMessageDialog(this,
-                    "Activez le mode rognage et selectionnez une zone.",
-                    "Rognage",
-                    JOptionPane.WARNING_MESSAGE);
+            this.statusBar.setMessage("Activez le mode rognage et selectionnez une zone.");
             return;
         }
 
@@ -638,20 +705,14 @@ public class MainWindow extends JFrame {
             this.drawingPanel.effacerSelectionRognage();
             this.drawingPanel.repaint();
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Rognage impossible: " + ex.getMessage(),
-                    "Erreur rognage",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Rognage impossible: " + ex.getMessage());
         }
     }
 
     private void creerNouvelleVueRogneeDepuisSelection() {
         Rectangle zoneSelectionnee = this.drawingPanel.getSelectionRognageImage();
         if (zoneSelectionnee == null) {
-            JOptionPane.showMessageDialog(this,
-                    "Activez le mode rognage et selectionnez une zone.",
-                    "Creation vue rognee",
-                    JOptionPane.WARNING_MESSAGE);
+            this.statusBar.setMessage("Activez le mode rognage et selectionnez une zone.");
             return;
         }
 
@@ -672,10 +733,7 @@ public class MainWindow extends JFrame {
             this.drawingPanel.effacerSelectionRognage();
             this.drawingPanel.repaint();
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Creation impossible: " + ex.getMessage(),
-                    "Erreur creation vue",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Creation impossible: " + ex.getMessage());
         }
     }
 
@@ -738,10 +796,10 @@ public class MainWindow extends JFrame {
         try {
             this.appliquerEchelleDepuisChamp();
 
-            double x = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosX.getText()));
-            double y = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosY.getText()));
-            double largeur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtLargeur.getText()));
-            double hauteur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtHauteur.getText()));
+            double x = ImperialParser.parsePouces(this.txtPosX.getText());
+            double y = ImperialParser.parsePouces(this.txtPosY.getText());
+            double largeur = ImperialParser.parsePouces(this.txtLargeur.getText());
+            double hauteur = ImperialParser.parsePouces(this.txtHauteur.getText());
 
             if (largeur <= 0 || hauteur <= 0) {
                 throw new IllegalArgumentException("La largeur et la hauteur doivent etre superieures a 0.");
@@ -758,63 +816,50 @@ public class MainWindow extends JFrame {
             this.drawingPanel.repaint();
 
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Valeurs invalides dans le panneau d'edition.",
-                    "Erreur",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Valeurs invalides dans le panneau.");
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this,
-                    ex.getMessage(),
-                    "Erreur",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage(ex.getMessage());
         }
     }
 
     private void appliquerEchelleDepuisChamp() {
-        double echelle = Double.parseDouble(this.txtEchelle.getText().replace(',', '.'));
+        double echelle = ImperialParser.parsePouces(this.txtEchelle.getText());
 
         if (echelle <= 0.0) {
             throw new IllegalArgumentException("L'echelle doit etre superieure a 0.");
         }
 
-        this.controller.definirMetresParPixel(echelle);
+        this.controller.definirEchellePoucesParPixel(echelle);
     }
 
     private void mettreAJourChampEchelle() {
-        double echelleAffichee = this.controller.getMetresParPixel() / this.drawingPanel.getZoomFactor();
+        double echelleAffichee = this.controller.getEchellePoucesParPixel() / this.drawingPanel.getZoomFactor();
         this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", echelleAffichee));
     }
 
     private void appliquerEchelleIndependante() {
         try {
-            double poucesParPixel = Double.parseDouble(this.txtEchelle.getText().replace(',', '.'));
+            double poucesParPixel = ImperialParser.parsePouces(this.txtEchelle.getText());
 
             if (poucesParPixel <= 0.0) {
                 throw new IllegalArgumentException("L'echelle doit etre superieure a 0.");
             }
 
-            double metresParPixel = poucesParPixel * 0.0254;
-            double metresParPixelBase = this.controller.getMetresParPixel();
-            double nouveauZoom = metresParPixelBase / poucesParPixel;
+            double echelleBase = this.controller.getEchellePoucesParPixel();
+            double nouveauZoom = echelleBase / poucesParPixel;
 
             this.drawingPanel.definirZoomFactor(nouveauZoom);
             this.mettreAJourChampEchelleSelonZoom();
 
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Valeur d'echelle invalide.",
-                    "Erreur",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Valeur d'echelle invalide.");
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this,
-                    ex.getMessage(),
-                    "Erreur",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage(ex.getMessage());
         }
     }
 
     private void mettreAJourChampEchelleSelonZoom() {
-        double echelleAffichee = this.controller.getMetresParPixel() / this.drawingPanel.getZoomFactor();
+        double echelleAffichee = this.controller.getEchellePoucesParPixel() / this.drawingPanel.getZoomFactor();
         this.txtEchelle.setText(String.format(java.util.Locale.US, "%.6f", echelleAffichee));
     }
 
@@ -825,10 +870,10 @@ public class MainWindow extends JFrame {
                 return;
             }
 
-            double x = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosX.getText()));
-            double y = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtPosY.getText()));
-            double largeur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtLargeur.getText()));
-            double hauteur = ImperialParser.poucesEnMetres(ImperialParser.parsePouces(this.txtHauteur.getText()));
+            double x = ImperialParser.parsePouces(this.txtPosX.getText());
+            double y = ImperialParser.parsePouces(this.txtPosY.getText());
+            double largeur = ImperialParser.parsePouces(this.txtLargeur.getText());
+            double hauteur = ImperialParser.parsePouces(this.txtHauteur.getText());
 
             String forme = this.getFormeSaisie();
             String typeZone = this.getTypeZoneSelectionne();
@@ -846,16 +891,201 @@ public class MainWindow extends JFrame {
             this.drawingPanel.repaint();
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    ex.getMessage(),
-                    "Erreur modification",
-                    JOptionPane.ERROR_MESSAGE);
+            this.statusBar.setMessage("Erreur modification: " + ex.getMessage());
         }
     }
 
     public void mettreAJourNombreTotalBlocs() {
+        try {
+            double prix = Double.parseDouble(this.txtPrixParBloc.getText().replace(',', '.'));
+            if (prix >= 0.0) {
+                this.controller.setPrixParBloc(prix);
+            }
+        } catch (NumberFormatException ignored) {
+        }
         this.controller.lancerSimulationToutesLesZones();
         int totalBlocs = this.controller.getNombreTotalBlocs();
-        this.lblNombreBlocs.setText("Nombre de Blocs Total : " + totalBlocs);
+        double cout = totalBlocs * this.controller.getPrixParBloc();
+        this.lblNombreBlocs.setText(String.format(
+                java.util.Locale.US, "Blocs : %d  |  Cout estimé : %.2f $", totalBlocs, cout));
+    }
+
+    public void activerModeSelection() {
+        if (this.drawingPanel != null) {
+            this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
+            this.statusBar.setMessage("Mode Selection actif.");
+        }
+    }
+
+    private void sauvegarderProjet() {
+        javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+        fc.setDialogTitle("Sauvegarder le projet");
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Projet BatiBloc (*.batibloc)", "batibloc"));
+        int result = fc.showSaveDialog(this);
+        if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+            String chemin = fc.getSelectedFile().getAbsolutePath();
+            if (!chemin.endsWith(".batibloc")) {
+                chemin += ".batibloc";
+            }
+            try {
+                this.controller.sauvegarderProjet(chemin);
+                this.statusBar.setMessage("Projet sauvegarde avec succes : " + chemin);
+            } catch (Exception ex) {
+                this.statusBar.setMessage("Erreur sauvegarde : " + ex.getMessage());
+            }
+        }
+    }
+
+    private void ouvrirProjet() {
+        javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+        fc.setDialogTitle("Ouvrir un projet");
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Projet BatiBloc (*.batibloc)", "batibloc"));
+        int result = fc.showOpenDialog(this);
+        if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+            try {
+                this.controller.chargerProjet(fc.getSelectedFile().getAbsolutePath());
+                this.chargerVuesDuPlan();
+                this.drawingPanel.repaint();
+                this.mettreAJourNombreTotalBlocs();
+                this.statusBar.setMessage("Projet charge avec succes.");
+            } catch (Exception ex) {
+                this.statusBar.setMessage("Erreur chargement : " + ex.getMessage());
+            }
+        }
+    }
+
+    private void chargerVuesDuPlan() {
+        // Recharger le combo des vues apres un chargement de projet
+        // Le combo est dans le topToolBar - on le reconstruit
+        java.util.List<String> vues = this.controller.getVuesDuPlan();
+        if (vues != null && !vues.isEmpty()) {
+            // Trouver et mettre a jour le comboBox existant si possible
+            java.awt.Component[] components = this.getContentPane().getComponents();
+            for (java.awt.Component comp : components) {
+                if (comp instanceof javax.swing.JToolBar toolbar) {
+                    for (java.awt.Component c : toolbar.getComponents()) {
+                        if (c instanceof javax.swing.JComboBox<?> combo) {
+                            combo.removeAllItems();
+                            @SuppressWarnings("unchecked")
+                            javax.swing.JComboBox<String> comboStr = (javax.swing.JComboBox<String>) combo;
+                            for (String vue : vues) {
+                                comboStr.addItem(vue);
+                            }
+                            int idx = this.controller.getIndexVueCourante();
+                            if (idx >= 0 && idx < vues.size()) {
+                                comboStr.setSelectedIndex(idx);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void exporterVueCourantePNG() {
+        javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+        fc.setDialogTitle("Exporter la vue courante en PNG");
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Image PNG (*.png)", "png"));
+        int result = fc.showSaveDialog(this);
+        if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+            String chemin = fc.getSelectedFile().getAbsolutePath();
+            if (!chemin.toLowerCase().endsWith(".png")) {
+                chemin += ".png";
+            }
+            try {
+                java.awt.image.BufferedImage imageVue = this.controller.getImageVueCourante();
+                if (imageVue == null) {
+                    this.statusBar.setMessage("Aucune vue a exporter.");
+                    return;
+                }
+                
+                // Creer une image de la taille de la vue
+                int w = imageVue.getWidth();
+                int h = imageVue.getHeight();
+                java.awt.image.BufferedImage export = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D g2d = export.createGraphics();
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                // Dessiner le fond (image du plan)
+                g2d.drawImage(imageVue, 0, 0, null);
+                
+                // Dessiner les zones et les blocs par dessus
+                this.drawingPanel.dessinerZonesEtBlocsSurImage(g2d, imageVue);
+                
+                g2d.dispose();
+                javax.imageio.ImageIO.write(export, "PNG", new java.io.File(chemin));
+                this.statusBar.setMessage("Vue exportee avec succes : " + chemin);
+            } catch (Exception ex) {
+                this.statusBar.setMessage("Erreur export : " + ex.getMessage());
+            }
+        }
+    }
+
+    private void exporterToutesLesVuesPNG() {
+        javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+        fc.setDialogTitle("Exporter toutes les vues en PNG");
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Image PNG (*.png)", "png"));
+        int result = fc.showSaveDialog(this);
+        if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+            String chemin = fc.getSelectedFile().getAbsolutePath();
+            if (!chemin.toLowerCase().endsWith(".png")) {
+                chemin += ".png";
+            }
+            try {
+                java.util.List<String> vues = this.controller.getVuesDuPlan();
+                if (vues == null || vues.isEmpty()) {
+                    this.statusBar.setMessage("Aucune vue a exporter.");
+                    return;
+                }
+                
+                int indexOriginal = this.controller.getIndexVueCourante();
+                int totalHeight = 0;
+                int maxWidth = 0;
+                
+                // Calculer les dimensions totales
+                for (int i = 0; i < vues.size(); i++) {
+                    this.controller.selectionnerVue(i);
+                    java.awt.image.BufferedImage img = this.controller.getImageVueCourante();
+                    if (img != null) {
+                        totalHeight += img.getHeight();
+                        maxWidth = Math.max(maxWidth, img.getWidth());
+                    }
+                }
+                
+                // Creer l'image combinee
+                java.awt.image.BufferedImage combined = new java.awt.image.BufferedImage(maxWidth, totalHeight, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D g2d = combined.createGraphics();
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                int yOffset = 0;
+                for (int i = 0; i < vues.size(); i++) {
+                    this.controller.selectionnerVue(i);
+                    java.awt.image.BufferedImage img = this.controller.getImageVueCourante();
+                    if (img != null) {
+                        g2d.drawImage(img, 0, yOffset, null);
+                        
+                        // Dessiner les zones/blocs de cette vue
+                        java.awt.Graphics2D g2dSub = (java.awt.Graphics2D) g2d.create(0, yOffset, img.getWidth(), img.getHeight());
+                        this.drawingPanel.dessinerZonesEtBlocsSurImage(g2dSub, img);
+                        g2dSub.dispose();
+                        
+                        yOffset += img.getHeight();
+                    }
+                }
+                
+                g2d.dispose();
+                
+                // Restaurer la vue originale
+                if (indexOriginal >= 0) {
+                    this.controller.selectionnerVue(indexOriginal);
+                }
+                
+                javax.imageio.ImageIO.write(combined, "PNG", new java.io.File(chemin));
+                this.statusBar.setMessage("Toutes les vues exportees : " + chemin);
+            } catch (Exception ex) {
+                this.statusBar.setMessage("Erreur export : " + ex.getMessage());
+            }
+        }
     }
 }

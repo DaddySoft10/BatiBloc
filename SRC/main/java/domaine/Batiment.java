@@ -2,8 +2,9 @@ package domaine;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.io.Serializable;
 
-public class Batiment {
+public class Batiment implements Serializable {
     private final List<Facade> facades;
     private final Plan plan;
     private Facade facadeCourante;

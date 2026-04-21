@@ -46,6 +46,20 @@ public class DrawingPanel extends JPanel {
     private int yTronquagePanel;
     private int indexZoneTronquage;
 
+    // Resizing feature
+    public enum ResizeHandle {
+        TOP_LEFT, TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, NONE;
+    }
+    private boolean redimensionnementEnCours;
+    private ResizeHandle poigneeActive;
+    private double resizeStartXMonde;
+    private double resizeStartYMonde;
+    private double resizeInitialLargeur;
+    private double resizeInitialHauteur;
+    private double resizeInitialX;
+    private double resizeInitialY;
+    private dto.ZoneDTO zoneApercuRedimensionnement;
+
     public DrawingPanel(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
         this.setBackground(Color.WHITE);
@@ -71,6 +85,10 @@ public class DrawingPanel extends JPanel {
         this.yTronquagePanel = 0;
         this.indexZoneTronquage = -1;
 
+        this.redimensionnementEnCours = false;
+        this.poigneeActive = ResizeHandle.NONE;
+        this.zoneApercuRedimensionnement = null;
+
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -81,7 +99,12 @@ public class DrawingPanel extends JPanel {
                 }
 
                 if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.SELECTION) {
-                    demarrerDeplacementZone(e.getX(), e.getY());
+                    ResizeHandle poignee = obtenirPoigneeSurvollee(e.getX(), e.getY());
+                    if (poignee != ResizeHandle.NONE) {
+                        demarrerRedimensionnement(e.getX(), e.getY(), poignee);
+                    } else {
+                        demarrerDeplacementZone(e.getX(), e.getY());
+                    }
                 }
                 if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.CREATION) {
                     demarrerCreationZone(e.getX(), e.getY());
@@ -114,6 +137,11 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (redimensionnementEnCours) {
+                    terminerRedimensionnement();
+                    return;
+                }
+
                 if (deplacementZoneEnCours) {
                     terminerDeplacementZone();
                 }
@@ -134,6 +162,19 @@ public class DrawingPanel extends JPanel {
 
                 rognageEnCours = false;
                 mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
+                
+                // Auto-rogner apres le trace et retourner en mode SELECTION
+                Rectangle sel = getSelectionRognageImage();
+                if (sel != null && sel.width > 5 && sel.height > 5) {
+                    try {
+                        mainWindow.getController().rognerVueCourante(sel.x, sel.y, sel.width, sel.height);
+                        effacerSelectionRognage();
+                        mainWindow.activerModeSelection();
+                        repaint();
+                    } catch (Exception ignored) {
+                        // Erreur de rognage geree silencieusement
+                    }
+                }
             }
 
             @Override
@@ -144,7 +185,19 @@ public class DrawingPanel extends JPanel {
 
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
+            public void mouseMoved(MouseEvent e) {
+                double[] coords = convertirEcranVersMonde(e.getX(), e.getY());
+                if (coords != null && mainWindow != null) {
+                    mainWindow.mettreAJourCoordonnees(coords[0], coords[1]);
+                }
+            }
+
+            @Override
             public void mouseDragged(MouseEvent e) {
+                if (redimensionnementEnCours) {
+                    mettreAJourRedimensionnementDepuisSouris(e.getX(), e.getY());
+                    return;
+                }
                 if (deplacementZoneEnCours) {
                     deplacerZoneDepuisSouris(e.getX(), e.getY());
                     return;
@@ -421,6 +474,7 @@ public class DrawingPanel extends JPanel {
 
                 this.mainWindow.rafraichirPanneauDroit();
                 this.mainWindow.mettreAJourNombreTotalBlocs();
+                this.mainWindow.activerModeSelection();
             }
         }
 
@@ -661,6 +715,7 @@ public class DrawingPanel extends JPanel {
 
         // Afficher info zoom en bas à gauche
         this.dessinerCreationEnCours(g);
+        this.dessinerRedimensionnementEnCours(g);
         this.dessinerLigneTronquage(g);
         String infoZoom = String.format("Zoom: %.0f%%", this.zoomFactor * 100);
         g.setColor(new Color(50, 50, 50, 180));
@@ -690,6 +745,36 @@ public class DrawingPanel extends JPanel {
                 this.creationAffichee.width,
                 this.creationAffichee.height
         );
+        g2d.dispose();
+    }
+
+    private void dessinerRedimensionnementEnCours(Graphics g) {
+        if (!this.redimensionnementEnCours || this.zoneApercuRedimensionnement == null) {
+            return;
+        }
+        
+        BufferedImage imageVue = this.mainWindow.getController().getImageVueCourante();
+        RenderContext context = this.calculerContexteRendu(imageVue);
+        if (imageVue == null || context == null) return;
+        
+        double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(this.zoneApercuRedimensionnement.getX());
+        double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(this.zoneApercuRedimensionnement.getY());
+        double imageLargeur = this.zoneApercuRedimensionnement.getLargeur();
+        double imageHauteur = this.zoneApercuRedimensionnement.getHauteur();
+
+        int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+        int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+        int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
+        int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
+
+        Graphics2D g2d = (Graphics2D) g.create();
+        g2d.setColor(new Color(255, 69, 0, 70)); // Orange rouge basique
+        g2d.fillRect(screenX, screenY, screenLargeur, screenHauteur);
+        
+        float[] dash = {5.0f};
+        g2d.setStroke(new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, dash, 0.0f));
+        g2d.setColor(new Color(255, 69, 0));
+        g2d.drawRect(screenX, screenY, screenLargeur, screenHauteur);
         g2d.dispose();
     }
 
@@ -888,8 +973,8 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        double metresParPixel = this.mainWindow.getController().getMetresParPixel();
-        if (metresParPixel <= 0) {
+        double echellePoucesParPixel = this.mainWindow.getController().getEchellePoucesParPixel();
+        if (echellePoucesParPixel <= 0) {
             return;
         }
 
@@ -898,65 +983,110 @@ public class DrawingPanel extends JPanel {
                 continue;
             }
 
-            double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
-            double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
-            double imageLargeur = zone.getLargeur() / metresParPixel;
-            double imageHauteur = zone.getHauteur() / metresParPixel;
-
-            int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
-            int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
-            int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
-            int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
-
-            if (screenLargeur <= 0 || screenHauteur <= 0) {
+            java.util.List<dto.BlocPlaceDTO> blocs = zone.getBlocsSimules();
+            if (blocs == null || blocs.isEmpty()) {
                 continue;
             }
 
-            double poucesParMetre = 39.3701;
-            double largeurZonePouces = zone.getLargeur() * poucesParMetre;
-            double hauteurZonePouces = zone.getHauteur() * poucesParMetre;
+            // Calculer le clip shape pour les zones triangulaires/tronquées
+            java.awt.Shape clipShape = null;
+            String typeForme = zone.getTypeForme();
+            
+            double zClipImageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
+            double zClipImageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
+            double zClipImageL = zone.getLargeur() / echellePoucesParPixel;
+            double zClipImageH = zone.getHauteur() / echellePoucesParPixel;
+            
+            if ("TRIANGULAIRE".equals(typeForme)) {
+                int sommetX = (int) Math.round(context.x + ((zClipImageX + zClipImageL / 2) / imageVue.getWidth()) * context.largeur);
+                int sommetY = (int) Math.round(context.y + (zClipImageY / imageVue.getHeight()) * context.hauteur);
+                int basGX = (int) Math.round(context.x + (zClipImageX / imageVue.getWidth()) * context.largeur);
+                int basGY = (int) Math.round(context.y + ((zClipImageY + zClipImageH) / imageVue.getHeight()) * context.hauteur);
+                int basDX = (int) Math.round(context.x + ((zClipImageX + zClipImageL) / imageVue.getWidth()) * context.largeur);
+                
+                java.awt.Polygon triClip = new java.awt.Polygon();
+                triClip.addPoint(sommetX, sommetY);
+                triClip.addPoint(basGX, basGY);
+                triClip.addPoint(basDX, basGY);
+                clipShape = triClip;
+                
+            } else if ("TRIANGULAIRE_TRONQUEE".equals(typeForme)) {
+                double ratioCoupe = zone.getRatioCoupe();
+                if (ratioCoupe <= 0.0) ratioCoupe = 0.5;
+                double largeurHautImage = zClipImageL * ratioCoupe;
+                double retraitImage = (zClipImageL - largeurHautImage) / 2.0;
+                double yCoupeImage = zClipImageY + zClipImageH * ratioCoupe;
 
-            double pixelsParPouceX = (screenLargeur > 0 && largeurZonePouces > 0)
-                    ? screenLargeur / largeurZonePouces : 1.0;
-            double pixelsParPouceY = (screenHauteur > 0 && hauteurZonePouces > 0)
-                    ? screenHauteur / hauteurZonePouces : 1.0;
-
-            double blocLargeurPx = 12.0 * pixelsParPouceX;
-            double blocHauteurPx = 8.0 * pixelsParPouceY;
-
-            if (blocLargeurPx < 2 || blocHauteurPx < 2) {
-                continue;
+                int hautGX = (int) Math.round(context.x + ((zClipImageX + retraitImage) / imageVue.getWidth()) * context.largeur);
+                int hautDX = (int) Math.round(context.x + ((zClipImageX + zClipImageL - retraitImage) / imageVue.getWidth()) * context.largeur);
+                int hautY = (int) Math.round(context.y + (yCoupeImage / imageVue.getHeight()) * context.hauteur);
+                int basGX = (int) Math.round(context.x + (zClipImageX / imageVue.getWidth()) * context.largeur);
+                int basDX = (int) Math.round(context.x + ((zClipImageX + zClipImageL) / imageVue.getWidth()) * context.largeur);
+                int basY = (int) Math.round(context.y + ((zClipImageY + zClipImageH) / imageVue.getHeight()) * context.hauteur);
+                
+                java.awt.Polygon trapClip = new java.awt.Polygon();
+                trapClip.addPoint(hautGX, hautY);
+                trapClip.addPoint(hautDX, hautY);
+                trapClip.addPoint(basDX, basY);
+                trapClip.addPoint(basGX, basY);
+                clipShape = trapClip;
             }
-
-            int nbColonnes = (int) Math.max(1, Math.floor(largeurZonePouces / 12.0));
-            int nbRangees = (int) Math.max(1, Math.floor(hauteurZonePouces / 8.0));
-            int nbBlocs = nbColonnes * nbRangees;
 
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setStroke(new BasicStroke(0.8f));
-            g2d.setColor(new Color(255, 255, 255, 160));
-
-            for (int col = 1; col < nbColonnes; col++) {
-                int xLigne = screenX + (int) Math.round(col * blocLargeurPx);
-                g2d.drawLine(xLigne, screenY, xLigne, screenY + screenHauteur);
+            
+            if (clipShape != null) {
+                g2d.setClip(clipShape);
             }
 
-            for (int row = 1; row < nbRangees; row++) {
-                int yLigne = screenY + (int) Math.round(row * blocHauteurPx);
-                g2d.drawLine(screenX, yLigne, screenX + screenLargeur, yLigne);
+            for (dto.BlocPlaceDTO bloc : blocs) {
+                double bX = zone.getX() + bloc.getX();
+                double bY = zone.getY() + bloc.getY();
+                
+                double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(bX);
+                double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(bY);
+                double imageLargeur = bloc.getLargeur() / echellePoucesParPixel;
+                double imageHauteur = bloc.getHauteur() / echellePoucesParPixel;
+
+                int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+                int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+                int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
+                int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
+
+                if (screenLargeur <= 0 || screenHauteur <= 0) {
+                    continue;
+                }
+
+                if (bloc.isRetaille()) {
+                    g2d.setColor(new Color(255, 100, 100, 160)); // Rouge pale pour blocs coupes
+                } else {
+                    g2d.setColor(new Color(255, 255, 255, 160)); // Blanc pour blocs normaux
+                }
+
+                g2d.drawRect(screenX, screenY, screenLargeur, screenHauteur);
             }
 
             g2d.dispose();
 
-            String texteBlocs = nbBlocs + " blocs";
+            String texteBlocs = blocs.size() + " blocs";
             Graphics2D g2dT = (Graphics2D) g.create();
             g2dT.setFont(new Font("SansSerif", Font.BOLD, 12));
-            g2dT.setColor(Color.WHITE);
+            
+            // Centrage basique sur la base de la zone (pas des blocs)
+            double zoneImageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
+            double zoneImageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
+            double zoneImageLargeur = zone.getLargeur() / echellePoucesParPixel;
+            double zoneImageHauteur = zone.getHauteur() / echellePoucesParPixel;
+
+            int zScreenX = (int) Math.round(context.x + (zoneImageX / imageVue.getWidth()) * context.largeur);
+            int zScreenY = (int) Math.round(context.y + (zoneImageY / imageVue.getHeight()) * context.hauteur);
+            int zScreenLargeur = (int) Math.round((zoneImageLargeur / imageVue.getWidth()) * context.largeur);
+            int zScreenHauteur = (int) Math.round((zoneImageHauteur / imageVue.getHeight()) * context.hauteur);
 
             java.awt.FontMetrics fm = g2dT.getFontMetrics();
             int texteLargeur = fm.stringWidth(texteBlocs);
-            int texteX = screenX + (screenLargeur - texteLargeur) / 2;
-            int texteY = screenY + (screenHauteur / 2);
+            int texteX = zScreenX + (zScreenLargeur - texteLargeur) / 2;
+            int texteY = zScreenY + (zScreenHauteur / 2);
 
             g2dT.setColor(Color.BLACK);
             g2dT.drawString(texteBlocs, texteX + 1, texteY + 1);
@@ -964,6 +1094,166 @@ public class DrawingPanel extends JPanel {
             g2dT.drawString(texteBlocs, texteX, texteY);
             g2dT.dispose();
         }
+    }
+
+    private ResizeHandle obtenirPoigneeSurvollee(int xPanel, int yPanel) {
+        int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
+        if (idx < 0) return ResizeHandle.NONE;
+
+        List<ZoneDTO> zones = this.mainWindow.getController().getZones();
+        if (idx >= zones.size()) return ResizeHandle.NONE;
+
+        ZoneDTO zone = zones.get(idx);
+        BufferedImage imageVue = this.mainWindow.getController().getImageVueCourante();
+        RenderContext context = this.calculerContexteRendu(imageVue);
+        if (imageVue == null || context == null) return ResizeHandle.NONE;
+
+        double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
+        double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
+        double imageLargeur = zone.getLargeur();
+        double imageHauteur = zone.getHauteur();
+
+        int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
+        int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
+        int screenLargeur = (int) Math.round((imageLargeur / imageVue.getWidth()) * context.largeur);
+        int screenHauteur = (int) Math.round((imageHauteur / imageVue.getHeight()) * context.hauteur);
+
+        int[][] poignees = {
+                {screenX, screenY},                                     // TOP_LEFT
+                {screenX + screenLargeur, screenY},                     // TOP_RIGHT
+                {screenX, screenY + screenHauteur},                     // BOTTOM_LEFT
+                {screenX + screenLargeur, screenY + screenHauteur},     // BOTTOM_RIGHT
+                {screenX + screenLargeur / 2, screenY},                 // TOP
+                {screenX + screenLargeur / 2, screenY + screenHauteur}, // BOTTOM
+                {screenX, screenY + screenHauteur / 2},                 // LEFT
+                {screenX + screenLargeur, screenY + screenHauteur / 2}  // RIGHT
+        };
+
+        ResizeHandle[] valeurs = {
+                ResizeHandle.TOP_LEFT, ResizeHandle.TOP_RIGHT, ResizeHandle.BOTTOM_LEFT, ResizeHandle.BOTTOM_RIGHT,
+                ResizeHandle.TOP, ResizeHandle.BOTTOM, ResizeHandle.LEFT, ResizeHandle.RIGHT
+        };
+
+        int taille = 8;
+        for (int i = 0; i < poignees.length; i++) {
+            int px = poignees[i][0];
+            int py = poignees[i][1];
+            if (xPanel >= px - taille && xPanel <= px + taille && yPanel >= py - taille && yPanel <= py + taille) {
+                return valeurs[i];
+            }
+        }
+        return ResizeHandle.NONE;
+    }
+
+    private void demarrerRedimensionnement(int xPanel, int yPanel, ResizeHandle poignee) {
+        int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
+        if (idx < 0) return;
+        
+        double[] coordsMonde = this.convertirEcranVersMonde(xPanel, yPanel);
+        if (coordsMonde == null) return;
+
+        ZoneDTO zone = this.mainWindow.getController().getZones().get(idx);
+        this.redimensionnementEnCours = true;
+        this.poigneeActive = poignee;
+        this.resizeStartXMonde = coordsMonde[0];
+        this.resizeStartYMonde = coordsMonde[1];
+        this.resizeInitialLargeur = zone.getLargeur();
+        this.resizeInitialHauteur = zone.getHauteur();
+        this.resizeInitialX = zone.getX();
+        this.resizeInitialY = zone.getY();
+        
+        this.zoneApercuRedimensionnement = new ZoneDTO(
+                zone.getX(), zone.getY(), zone.getLargeur(), zone.getHauteur(), 
+                zone.getTypeForme(), zone.getTypeZone(), zone.getRatioCoupe(), null
+        );
+    }
+
+    private void mettreAJourRedimensionnementDepuisSouris(int xPanel, int yPanel) {
+        if (!this.redimensionnementEnCours || this.zoneApercuRedimensionnement == null) return;
+
+        double[] coordsMonde = this.convertirEcranVersMonde(xPanel, yPanel);
+        if (coordsMonde == null) return;
+
+        double deltaX = coordsMonde[0] - this.resizeStartXMonde;
+        double deltaY = coordsMonde[1] - this.resizeStartYMonde;
+
+        double minSize = 1.0;
+        double newX = this.resizeInitialX;
+        double newY = this.resizeInitialY;
+        double newWidth = this.resizeInitialLargeur;
+        double newHeight = this.resizeInitialHauteur;
+
+        switch (this.poigneeActive) {
+            case RIGHT:
+                newWidth = Math.max(minSize, this.resizeInitialLargeur + deltaX);
+                break;
+            case BOTTOM:
+                newHeight = Math.max(minSize, this.resizeInitialHauteur + deltaY);
+                break;
+            case BOTTOM_RIGHT:
+                newWidth = Math.max(minSize, this.resizeInitialLargeur + deltaX);
+                newHeight = Math.max(minSize, this.resizeInitialHauteur + deltaY);
+                break;
+            case LEFT:
+                newWidth = Math.max(minSize, this.resizeInitialLargeur - deltaX);
+                newX = this.resizeInitialX + (this.resizeInitialLargeur - newWidth);
+                break;
+            case TOP:
+                newHeight = Math.max(minSize, this.resizeInitialHauteur - deltaY);
+                newY = this.resizeInitialY + (this.resizeInitialHauteur - newHeight);
+                break;
+            case TOP_LEFT:
+                newWidth = Math.max(minSize, this.resizeInitialLargeur - deltaX);
+                newX = this.resizeInitialX + (this.resizeInitialLargeur - newWidth);
+                newHeight = Math.max(minSize, this.resizeInitialHauteur - deltaY);
+                newY = this.resizeInitialY + (this.resizeInitialHauteur - newHeight);
+                break;
+            case TOP_RIGHT:
+                newWidth = Math.max(minSize, this.resizeInitialLargeur + deltaX);
+                newHeight = Math.max(minSize, this.resizeInitialHauteur - deltaY);
+                newY = this.resizeInitialY + (this.resizeInitialHauteur - newHeight);
+                break;
+            case BOTTOM_LEFT:
+                newWidth = Math.max(minSize, this.resizeInitialLargeur - deltaX);
+                newX = this.resizeInitialX + (this.resizeInitialLargeur - newWidth);
+                newHeight = Math.max(minSize, this.resizeInitialHauteur + deltaY);
+                break;
+            default:
+                break;
+        }
+
+        this.zoneApercuRedimensionnement = new ZoneDTO(
+                newX, newY, newWidth, newHeight,
+                this.zoneApercuRedimensionnement.getTypeForme(),
+                this.zoneApercuRedimensionnement.getTypeZone(),
+                this.zoneApercuRedimensionnement.getRatioCoupe(), null
+        );
+        this.repaint();
+    }
+
+    private void terminerRedimensionnement() {
+        if (!this.redimensionnementEnCours || this.zoneApercuRedimensionnement == null) return;
+        
+        int idx = this.mainWindow.getController().getIndexZoneSelectionnee();
+        if (idx >= 0) {
+            this.mainWindow.getController().modifierZone(
+                    idx,
+                    this.zoneApercuRedimensionnement.getX(),
+                    this.zoneApercuRedimensionnement.getY(),
+                    this.zoneApercuRedimensionnement.getLargeur(),
+                    this.zoneApercuRedimensionnement.getHauteur(),
+                    this.zoneApercuRedimensionnement.getTypeForme(),
+                    this.zoneApercuRedimensionnement.getTypeZone(),
+                    this.zoneApercuRedimensionnement.getRatioCoupe()
+            );
+            this.mainWindow.rafraichirPanneauDroit();
+            this.mainWindow.mettreAJourNombreTotalBlocs();
+        }
+
+        this.redimensionnementEnCours = false;
+        this.poigneeActive = ResizeHandle.NONE;
+        this.zoneApercuRedimensionnement = null;
+        this.repaint();
     }
 
     private static class PointImage {
@@ -1177,5 +1467,19 @@ public class DrawingPanel extends JPanel {
         this.mainWindow.rafraichirPanneauDroit();
         this.mainWindow.mettreAJourNombreTotalBlocs();
         this.repaint();
+    }
+
+    /**
+     * Dessine les zones et blocs directement sur un Graphics2D d'export (pour le PNG).
+     * Le contexte de rendu utilise l'image a taille reelle (1:1).
+     */
+    public void dessinerZonesEtBlocsSurImage(java.awt.Graphics2D g2d, java.awt.image.BufferedImage imageVue) {
+        if (g2d == null || imageVue == null) return;
+        
+        // Creer un contexte 1:1 (l'image fait exactement sa taille)
+        RenderContext ctx = new RenderContext(0, 0, 0, 0, imageVue.getWidth(), imageVue.getHeight());
+        
+        this.dessinerZones(g2d, imageVue, ctx);
+        this.dessinerBlocsSimulation(g2d, imageVue, ctx);
     }
 }

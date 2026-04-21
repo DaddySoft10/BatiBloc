@@ -1,225 +1,267 @@
 package domaine;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public final class SimulateurPlacement {
-    public static final double BLOC_LARGEUR = 12.0;
-    public static final double BLOC_HAUTEUR = 8.0;
+    public static final double BLOC_LARGEUR = 96.0;
+    public static final double BLOC_HAUTEUR = 12.0;
     public static final double MIN_RETAILLE = 6.0;
     private static final double EPSILON = 0.0001;
 
     private SimulateurPlacement() {
     }
 
-    public static List<ZoneBloc.BlocPlace> simuler(ZoneBloc zoneBloc) {
-        if (zoneBloc == null) {
-            throw new IllegalArgumentException("La zone de blocs ne peut pas etre nulle.");
+    public static List<ZoneBloc.BlocPlace> simulerFacade(List<Zone> zones) {
+        List<ZoneBloc.BlocPlace> blocsGlobaux = new ArrayList<>();
+
+        List<ZoneBloc> zonesRect = new ArrayList<>();
+        List<ZoneBloc> zonesTri = new ArrayList<>();
+        List<ZoneOuverture> ouvertures = new ArrayList<>();
+
+        for (Zone zone : zones) {
+            if (zone instanceof ZoneBloc zb) {
+                if (zb.getTypeForme() == TypeForme.RECTANGULAIRE) {
+                    zonesRect.add(zb);
+                } else {
+                    zonesTri.add(zb);
+                }
+            } else if (zone instanceof ZoneOuverture zo) {
+                ouvertures.add(zo);
+            }
         }
-        return new ArrayList<>();
+
+        simulerZonesRectangulaires(zonesRect, ouvertures, blocsGlobaux);
+
+        for (ZoneBloc triZone : zonesTri) {
+            simulerZoneTriangulaire(triZone, blocsGlobaux);
+        }
+
+        return blocsGlobaux;
     }
 
-    public static List<ZoneBloc.BlocPlace> simulerZoneRectangulaire(double largeurPouces, double hauteurPouces) {
-        if (largeurPouces <= 0.0) {
-            throw new IllegalArgumentException("La largeur doit etre superieure a 0.");
-        }
-        if (hauteurPouces <= 0.0) {
-            throw new IllegalArgumentException("La hauteur doit etre superieure a 0.");
-        }
+    private static void simulerZonesRectangulaires(List<ZoneBloc> zones, List<ZoneOuverture> ouvertures, List<ZoneBloc.BlocPlace> blocsGlobaux) {
+        if (zones.isEmpty() && ouvertures.isEmpty()) return;
 
-        List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
-        int nombreRangees = (int) Math.ceil(hauteurPouces / BLOC_HAUTEUR);
-        double restantPourProchaineRangee = 0.0;
-
-        for (int indexRangee = 0; indexRangee < nombreRangees; indexRangee++) {
-            double y = indexRangee * BLOC_HAUTEUR;
-            ResultatRangee resultatRangee = placerBlocsDansRangee(y, largeurPouces, restantPourProchaineRangee);
-            blocsPlaces.addAll(resultatRangee.getBlocs());
-            restantPourProchaineRangee = resultatRangee.getRestantPourProchaineRangee();
+        double minY = Double.MAX_VALUE;
+        double maxY = -Double.MAX_VALUE;
+        for (ZoneBloc zone : zones) {
+            minY = Math.min(minY, zone.getY());
+            maxY = Math.max(maxY, zone.getY() + zone.getHauteur());
+        }
+        for (ZoneOuverture ov : ouvertures) {
+            minY = Math.min(minY, ov.getY());
+            maxY = Math.max(maxY, ov.getY() + ov.getHauteur());
         }
 
-        return blocsPlaces;
+        if (minY == Double.MAX_VALUE) return;
+
+        int nombreRangees = (int) Math.ceil((maxY - minY) / BLOC_HAUTEUR);
+        java.util.Map<Long, Double> retailleParSegment = new java.util.HashMap<>();
+
+        for (int i = 0; i < nombreRangees; i++) {
+            double currentY = minY + i * BLOC_HAUTEUR;
+
+            List<Segment> segments = new ArrayList<>();
+            for (ZoneBloc zone : zones) {
+                if (isInsideY(zone, currentY)) {
+                    segments.add(new Segment(zone.getX(), zone.getX() + zone.getLargeur()));
+                }
+            }
+            segments = fusionnerSegments(segments);
+
+            // Soustraire les ouvertures (en passant tous les zones pour le linteau)
+            List<Zone> allZones = new ArrayList<>(zones);
+            allZones.addAll(ouvertures);
+            segments = soustraireOuvertures(segments, allZones, currentY, blocsGlobaux);
+            segments.sort(Comparator.comparingDouble(s -> s.debut));
+
+            for (Segment segment : segments) {
+                double largeurDispo = segment.fin - segment.debut;
+                if (largeurDispo < MIN_RETAILLE) continue;
+
+                long segmentKey = Math.round(segment.debut * 100);
+                double retaille = retailleParSegment.getOrDefault(segmentKey, 0.0);
+
+                double x = segment.debut;
+                double longueurPremierBloc;
+
+                if (retaille >= MIN_RETAILLE) {
+                    longueurPremierBloc = retaille;
+                } else {
+                    longueurPremierBloc = BLOC_LARGEUR;
+                    double espaceRestant = largeurDispo - longueurPremierBloc;
+                    if (espaceRestant > 0) {
+                        double reste = espaceRestant % BLOC_LARGEUR;
+                        if (reste > EPSILON && reste < MIN_RETAILLE) {
+                            longueurPremierBloc -= (MIN_RETAILLE - reste);
+                        }
+                    }
+                }
+
+                double longueurCourante = longueurPremierBloc;
+                double retailleFinale = 0.0;
+
+                while (x < segment.fin - EPSILON) {
+                    double finBloc = x + longueurCourante;
+                    if (finBloc > segment.fin + EPSILON) {
+                        double longueurReelle = segment.fin - x;
+                        retailleFinale = longueurCourante - longueurReelle;
+                        if (retailleFinale < MIN_RETAILLE) retailleFinale = 0.0;
+                        blocsGlobaux.add(new ZoneBloc.BlocPlace(x, currentY, longueurReelle, BLOC_HAUTEUR, true));
+                        x = segment.fin;
+                    } else {
+                        boolean estCoupe = Math.abs(longueurCourante - BLOC_LARGEUR) > EPSILON;
+                        blocsGlobaux.add(new ZoneBloc.BlocPlace(x, currentY, longueurCourante, BLOC_HAUTEUR, estCoupe));
+                        x += longueurCourante;
+                        longueurCourante = BLOC_LARGEUR;
+                    }
+                }
+
+                retailleParSegment.put(segmentKey, retailleFinale);
+            }
+        }
     }
 
-    public static List<ZoneBloc.BlocPlace> simulerZoneTriangulaire(double largeurBasePouces, double hauteurPouces) {
-        if (largeurBasePouces <= 0.0) {
-            throw new IllegalArgumentException("La largeur de base doit etre superieure a 0.");
-        }
-        if (hauteurPouces <= 0.0) {
-            throw new IllegalArgumentException("La hauteur doit etre superieure a 0.");
-        }
+    private static void simulerZoneTriangulaire(ZoneBloc zone, List<ZoneBloc.BlocPlace> blocsGlobaux) {
+        double yStart;
+        double yEnd = zone.getY() + zone.getHauteur();
 
-        List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
-        int nombreRangees = (int) Math.ceil(hauteurPouces / BLOC_HAUTEUR);
-        double restantPourProchaineRangee = 0.0;
-
-        for (int indexRangee = 0; indexRangee < nombreRangees; indexRangee++) {
-            double y = indexRangee * BLOC_HAUTEUR;
-            double ratioVertical = y / hauteurPouces;
-            double largeurRangee = normaliserLongueur(largeurBasePouces * (1.0 - ratioVertical));
-            double offsetX = normaliserLongueur((largeurBasePouces - largeurRangee) / 2.0);
-
-            ResultatRangee resultatRangee = placerBlocsDansRangee(y, largeurRangee, offsetX, restantPourProchaineRangee);
-            blocsPlaces.addAll(resultatRangee.getBlocs());
-            restantPourProchaineRangee = resultatRangee.getRestantPourProchaineRangee();
+        if (zone.getTypeForme() == TypeForme.TRIANGULAIRE_TRONQUEE) {
+            double ratioCoupe = zone.getRatioCoupe();
+            if (ratioCoupe <= 0.0) ratioCoupe = 0.5;
+            yStart = zone.getY() + zone.getHauteur() * ratioCoupe;
+        } else {
+            yStart = zone.getY();
         }
 
-        return blocsPlaces;
-    }
+        int nombreRangees = (int) Math.ceil((yEnd - yStart) / BLOC_HAUTEUR);
 
-    public static List<ZoneBloc.BlocPlace> simulerZoneTriangulaireTronquee(double largeurBasePouces,
-                                                                            double largeurSommetPouces,
-                                                                            double hauteurPouces) {
-        if (largeurBasePouces <= 0.0) {
-            throw new IllegalArgumentException("La largeur de base doit etre superieure a 0.");
-        }
-        if (largeurSommetPouces <= 0.0) {
-            throw new IllegalArgumentException("La largeur du sommet doit etre superieure a 0.");
-        }
-        if (hauteurPouces <= 0.0) {
-            throw new IllegalArgumentException("La hauteur doit etre superieure a 0.");
-        }
-        if (largeurSommetPouces - largeurBasePouces > EPSILON) {
-            throw new IllegalArgumentException("La largeur du sommet ne peut pas exceder la largeur de base.");
-        }
+        for (int i = 0; i < nombreRangees; i++) {
+            double currentY = yStart + i * BLOC_HAUTEUR;
+            if (currentY >= yEnd - EPSILON) break;
 
-        List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
-        int nombreRangees = (int) Math.ceil(hauteurPouces / BLOC_HAUTEUR);
-        double restantPourProchaineRangee = 0.0;
+            Segment seg = segmentTriangulaire(zone, currentY);
+            if (seg == null) continue;
 
-        for (int indexRangee = 0; indexRangee < nombreRangees; indexRangee++) {
-            double y = indexRangee * BLOC_HAUTEUR;
-            double ratioVertical = y / hauteurPouces;
-            double largeurRangee = normaliserLongueur(largeurBasePouces
-                    + ((largeurSommetPouces - largeurBasePouces) * ratioVertical));
-            double offsetX = normaliserLongueur((largeurBasePouces - largeurRangee) / 2.0);
+            double largeurDispo = seg.fin - seg.debut;
+            if (largeurDispo < MIN_RETAILLE) continue;
 
-            ResultatRangee resultatRangee = placerBlocsDansRangee(y, largeurRangee, offsetX, restantPourProchaineRangee);
-            blocsPlaces.addAll(resultatRangee.getBlocs());
-            restantPourProchaineRangee = resultatRangee.getRestantPourProchaineRangee();
-        }
-
-        return blocsPlaces;
-    }
-
-    private static ResultatRangee placerBlocsDansRangee(double y, double largeurRangee, double longueurDepart) {
-        return placerBlocsDansRangee(y, largeurRangee, 0.0, longueurDepart);
-    }
-
-    private static ResultatRangee placerBlocsDansRangee(double y, double largeurRangee, double offsetX, double longueurDepart) {
-        List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
-        double x = offsetX;
-        double largeurRestante = largeurRangee;
-        double restantPourProchaineRangee = 0.0;
-
-        if (estStrictementPositive(longueurDepart)) {
-            if (longueurDepart - largeurRangee > EPSILON) {
-                return creerRangeeRedistribuee(y, largeurRangee, offsetX);
+            // Pas de retaille entre rangées pour les triangles
+            double x = seg.debut;
+            double longueurPremierBloc = BLOC_LARGEUR;
+            double espaceRestant = largeurDispo - longueurPremierBloc;
+            if (espaceRestant > 0) {
+                double reste = espaceRestant % BLOC_LARGEUR;
+                if (reste > EPSILON && reste < MIN_RETAILLE) {
+                    longueurPremierBloc -= (MIN_RETAILLE - reste);
+                }
             }
 
-            if (longueurDepart + EPSILON < MIN_RETAILLE) {
-                return creerRangeeRedistribuee(y, largeurRangee, offsetX);
+            double longueurCourante = longueurPremierBloc;
+
+            while (x < seg.fin - EPSILON) {
+                double finBloc = x + longueurCourante;
+                if (finBloc > seg.fin + EPSILON) {
+                    double longueurReelle = seg.fin - x;
+                    blocsGlobaux.add(new ZoneBloc.BlocPlace(x, currentY, longueurReelle, BLOC_HAUTEUR, true));
+                    x = seg.fin;
+                } else {
+                    boolean estCoupe = Math.abs(longueurCourante - BLOC_LARGEUR) > EPSILON;
+                    blocsGlobaux.add(new ZoneBloc.BlocPlace(x, currentY, longueurCourante, BLOC_HAUTEUR, estCoupe));
+                    x += longueurCourante;
+                    longueurCourante = BLOC_LARGEUR;
+                }
             }
-
-            ajouterBloc(blocsPlaces, x, y, longueurDepart);
-            x += longueurDepart;
-            largeurRestante -= longueurDepart;
         }
-
-        int nombreBlocsComplets = (int) Math.floor((largeurRestante + EPSILON) / BLOC_LARGEUR);
-        for (int indexBloc = 0; indexBloc < nombreBlocsComplets; indexBloc++) {
-            blocsPlaces.add(new ZoneBloc.BlocPlace(x, y, BLOC_LARGEUR, BLOC_HAUTEUR, false));
-            x += BLOC_LARGEUR;
-        }
-
-        largeurRestante -= nombreBlocsComplets * BLOC_LARGEUR;
-        if (estZero(largeurRestante)) {
-            return new ResultatRangee(blocsPlaces, 0.0);
-        }
-
-        if (largeurRestante + EPSILON < MIN_RETAILLE) {
-            return creerRangeeRedistribuee(y, largeurRangee, offsetX);
-        }
-
-        ajouterBloc(blocsPlaces, x, y, largeurRestante);
-        restantPourProchaineRangee = BLOC_LARGEUR - largeurRestante;
-        return new ResultatRangee(blocsPlaces, normaliserLongueur(restantPourProchaineRangee));
     }
 
-    private static ResultatRangee creerRangeeRedistribuee(double y, double largeurRangee) {
-        return creerRangeeRedistribuee(y, largeurRangee, 0.0);
+    private static Segment segmentTriangulaire(ZoneBloc zone, double currentY) {
+        double ratio = (currentY - zone.getY()) / zone.getHauteur();
+        double largeurActuelle = zone.getLargeur() * ratio;
+        double offset = (zone.getLargeur() - largeurActuelle) / 2.0;
+        if (largeurActuelle < MIN_RETAILLE) return null;
+        return new Segment(zone.getX() + offset, zone.getX() + offset + largeurActuelle);
     }
 
-    private static ResultatRangee creerRangeeRedistribuee(double y, double largeurRangee, double offsetX) {
-        List<ZoneBloc.BlocPlace> blocsPlaces = new ArrayList<>();
-        double x = offsetX;
-        int nombreBlocsCentraux = (int) Math.floor((largeurRangee - (2.0 * MIN_RETAILLE) + EPSILON) / BLOC_LARGEUR);
-
-        if (nombreBlocsCentraux < 0) {
-            nombreBlocsCentraux = 0;
-        }
-
-        double largeurExtremite = (largeurRangee - (nombreBlocsCentraux * BLOC_LARGEUR)) / 2.0;
-        largeurExtremite = normaliserLongueur(largeurExtremite);
-
-        if (largeurExtremite + EPSILON < MIN_RETAILLE) {
-            throw new IllegalArgumentException("Impossible de respecter la retaille minimale pour cette rangee.");
-        }
-
-        ajouterBloc(blocsPlaces, x, y, largeurExtremite);
-        x += largeurExtremite;
-
-        for (int indexBloc = 0; indexBloc < nombreBlocsCentraux; indexBloc++) {
-            blocsPlaces.add(new ZoneBloc.BlocPlace(x, y, BLOC_LARGEUR, BLOC_HAUTEUR, false));
-            x += BLOC_LARGEUR;
-        }
-
-        ajouterBloc(blocsPlaces, x, y, largeurExtremite);
-
-        double restantPourProchaineRangee = BLOC_LARGEUR - largeurExtremite;
-        if (restantPourProchaineRangee + EPSILON < MIN_RETAILLE) {
-            restantPourProchaineRangee = 0.0;
-        }
-
-        return new ResultatRangee(blocsPlaces, normaliserLongueur(restantPourProchaineRangee));
+    private static boolean isInsideY(Zone zone, double y) {
+        return y >= zone.getY() - EPSILON && y < zone.getY() + zone.getHauteur() - EPSILON;
     }
 
-    private static void ajouterBloc(List<ZoneBloc.BlocPlace> blocsPlaces, double x, double y, double largeur) {
-        double largeurNormalisee = normaliserLongueur(largeur);
-        boolean retaille = Math.abs(largeurNormalisee - BLOC_LARGEUR) > EPSILON;
-        blocsPlaces.add(new ZoneBloc.BlocPlace(x, y, largeurNormalisee, BLOC_HAUTEUR, retaille));
-    }
+    private static List<Segment> fusionnerSegments(List<Segment> segments) {
+        if (segments.isEmpty()) return segments;
+        segments.sort(Comparator.comparingDouble(s -> s.debut));
+        List<Segment> fusionnes = new ArrayList<>();
+        Segment actuel = segments.get(0);
 
-    private static boolean estZero(double valeur) {
-        return Math.abs(valeur) <= EPSILON;
-    }
-
-    private static boolean estStrictementPositive(double valeur) {
-        return valeur > EPSILON;
-    }
-
-    private static double normaliserLongueur(double valeur) {
-        if (estZero(valeur)) {
-            return 0.0;
+        for (int i = 1; i < segments.size(); i++) {
+            Segment s = segments.get(i);
+            if (s.debut <= actuel.fin + EPSILON) {
+                actuel.fin = Math.max(actuel.fin, s.fin);
+            } else {
+                fusionnes.add(actuel);
+                actuel = s;
+            }
         }
-        return Math.round(valeur * 1000.0) / 1000.0;
+        fusionnes.add(actuel);
+        return fusionnes;
     }
 
-    private static final class ResultatRangee {
-        private final List<ZoneBloc.BlocPlace> blocs;
-        private final double restantPourProchaineRangee;
+    private static List<Segment> soustraireOuvertures(List<Segment> segments, List<Zone> zones, double currentY, List<ZoneBloc.BlocPlace> blocsGlobaux) {
+        List<Segment> result = new ArrayList<>(segments);
+        for (Zone zone : zones) {
+            if (zone instanceof ZoneOuverture) {
+                boolean isSmallOuverture = zone.getLargeur() <= 84.0;
 
-        private ResultatRangee(List<ZoneBloc.BlocPlace> blocs, double restantPourProchaineRangee) {
-            this.blocs = blocs;
-            this.restantPourProchaineRangee = restantPourProchaineRangee;
+                if (isInsideY(zone, currentY)) {
+                    double oStart = zone.getX();
+                    double oEnd = zone.getX() + zone.getLargeur();
+
+                    if (!isSmallOuverture) {
+                        oStart -= 4.0;
+                        oEnd += 4.0;
+                    }
+
+                    result = couperSegments(result, oStart, oEnd);
+                } else if (isSmallOuverture && currentY >= zone.getY() + zone.getHauteur() - EPSILON && currentY < zone.getY() + zone.getHauteur() + BLOC_HAUTEUR - EPSILON) {
+                    double linteauWidth = zone.getLargeur() + 12.0;
+                    linteauWidth = Math.max(linteauWidth, MIN_RETAILLE);
+
+                    double lStart = zone.getX() + zone.getLargeur() / 2.0 - linteauWidth / 2.0;
+                    double lEnd = lStart + linteauWidth;
+
+                    blocsGlobaux.add(new ZoneBloc.BlocPlace(lStart, currentY, linteauWidth, BLOC_HAUTEUR, false));
+                    result = couperSegments(result, lStart, lEnd);
+                }
+            }
         }
+        return result;
+    }
 
-        private List<ZoneBloc.BlocPlace> getBlocs() {
-            return this.blocs;
+    private static List<Segment> couperSegments(List<Segment> segments, double cutStart, double cutEnd) {
+        List<Segment> result = new ArrayList<>();
+        for (Segment s : segments) {
+            if (cutEnd <= s.debut + EPSILON || cutStart >= s.fin - EPSILON) {
+                result.add(s);
+            } else {
+                if (cutStart > s.debut + EPSILON) {
+                    result.add(new Segment(s.debut, cutStart));
+                }
+                if (cutEnd < s.fin - EPSILON) {
+                    result.add(new Segment(cutEnd, s.fin));
+                }
+            }
         }
+        return result;
+    }
 
-        private double getRestantPourProchaineRangee() {
-            return this.restantPourProchaineRangee;
+    private static class Segment {
+        double debut;
+        double fin;
+        Segment(double debut, double fin) {
+            this.debut = Math.min(debut, fin);
+            this.fin = Math.max(debut, fin);
         }
     }
 }

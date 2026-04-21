@@ -1,6 +1,8 @@
 package domaine;
 
-public class ZoneClassique extends Zone {
+import java.io.Serializable;
+
+public class ZoneClassique extends Zone implements Serializable {
     private static final String TYPE_ZONE = "CLASSIQUE";
 
     public ZoneClassique() {

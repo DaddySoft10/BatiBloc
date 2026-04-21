@@ -28,9 +28,7 @@ public final class ZoneFactory {
         Zone zone = switch (typeZone) {
             case BLOC -> new ZoneBloc(x, y, largeur, hauteur, typeForme);
             case CLASSIQUE -> new ZoneClassique(x, y, largeur, hauteur, typeForme);
-            case OUVERTURE -> throw new IllegalArgumentException(
-                    "Le type de zone OUVERTURE n'est pas encore implemente."
-            );
+            case OUVERTURE -> new ZoneOuverture(x, y, largeur, hauteur, typeForme);
         };
 
             zone.setRatioCoupe(ratioCoupe);

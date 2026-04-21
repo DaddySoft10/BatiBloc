@@ -1,6 +1,8 @@
 package domaine;
 
-public class Zone {
+import java.io.Serializable;
+
+public class Zone implements Serializable {
     private double x;
     private double y;
     private double largeur;

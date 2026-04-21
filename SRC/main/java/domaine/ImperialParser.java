@@ -17,41 +17,57 @@ public class ImperialParser {
      *   "3'"    → 36.0 pouces
      *   "6""    → 6.0 pouces
      *   "42"    → 42.0 pouces (brut)
+     *   "1 1/4"  → 1.25 pouces
+     *   "1/4"    → 0.25 pouces
      */
     public static double parsePouces(String valeur) {
         if (valeur == null || valeur.isBlank()) {
-            throw new IllegalArgumentException(
-                "La valeur ne peut pas etre vide.");
+            throw new IllegalArgumentException("La valeur ne peut pas etre vide.");
         }
         String v = valeur.trim();
+        v = v.replace("¼", " 1/4").replace("½", " 1/2").replace("¾", " 3/4");
 
-        Pattern pPiedsEtPouces = Pattern.compile(
-            "(\\d+\\.?\\d*)'\\s*(\\d+\\.?\\d*)\"");
+        // Cas 1: Pieds et pouces (ex: 3' 6")
+        Pattern pPiedsEtPouces = Pattern.compile("([\\d\\s/\\.\\,]+)'\\s*([\\d\\s/\\.\\,]+)\"?");
         Matcher m = pPiedsEtPouces.matcher(v);
         if (m.find()) {
-            double pieds = Double.parseDouble(m.group(1));
-            double pouces = Double.parseDouble(m.group(2));
+            double pieds = parseNombre(m.group(1));
+            String poucesStr = m.group(2).replace("\"", "").replace("''", "");
+            double pouces = parseNombre(poucesStr);
             return pieds * 12.0 + pouces;
         }
 
-        Pattern pPieds = Pattern.compile("(\\d+\\.?\\d*)'");
+        // Cas 2: Seulement des pieds (ex: 3')
+        Pattern pPieds = Pattern.compile("^([\\d\\s/\\.\\,]+)'$");
         m = pPieds.matcher(v);
         if (m.find()) {
-            return Double.parseDouble(m.group(1)) * 12.0;
+            return parseNombre(m.group(1)) * 12.0;
         }
 
-        Pattern pPouces = Pattern.compile("(\\d+\\.?\\d*)\"");
-        m = pPouces.matcher(v);
-        if (m.find()) {
-            return Double.parseDouble(m.group(1));
-        }
-
+        // Cas 3: Seulement des pouces (on enleve tous les guillemets et on parse)
+        String poucesStr = v.replace("\"", "").replace("''", "").trim();
         try {
-            return Double.parseDouble(v.replace(',', '.'));
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(
-                "Format invalide : " + valeur);
+            return parseNombre(poucesStr);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Format invalide : " + valeur);
         }
+    }
+
+    private static double parseNombre(String nombreStr) {
+        String n = nombreStr.trim().replace(',', '.');
+        if (n.contains("/")) {
+            String[] parts = n.split("\\s+");
+            if (parts.length == 2) {
+                double entier = Double.parseDouble(parts[0]);
+                String[] frac = parts[1].split("/");
+                double fraction = Double.parseDouble(frac[0]) / Double.parseDouble(frac[1]);
+                return entier + fraction;
+            } else if (parts.length == 1) {
+                String[] frac = parts[0].split("/");
+                return Double.parseDouble(frac[0]) / Double.parseDouble(frac[1]);
+            }
+        }
+        return Double.parseDouble(n);
     }
 
     /**
