@@ -354,9 +354,6 @@ public class MainWindow extends JFrame {
         JToolBar topToolBar = new JToolBar();
         topToolBar.setFloatable(false);
 
-        JButton btnCalculer = new JButton("Simulation");
-        btnCalculer.addActionListener(e -> this.afficherEstimation());
-
         JToggleButton btnTronquage = new JToggleButton("Tronquer triangle");
         btnTronquage.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.TRONQUAGE));
 
@@ -402,8 +399,6 @@ public class MainWindow extends JFrame {
 
         topToolBar.add(btnUndo);
         topToolBar.add(btnRedo);
-        topToolBar.addSeparator();
-        topToolBar.add(btnCalculer);
         topToolBar.addSeparator();
         topToolBar.add(btnTronquage);
         topToolBar.addSeparator();
@@ -612,7 +607,12 @@ public class MainWindow extends JFrame {
         gbc.gridx = 1;
         gbc.weightx = 1.0;
         gbc.insets = new Insets(20, 5, 5, 5);
-        rightSideBar.add(this.txtPrixParBloc, gbc);
+        JPanel prixPanel = new JPanel(new BorderLayout(4, 0));
+        prixPanel.add(this.txtPrixParBloc, BorderLayout.CENTER);
+        JButton btnValiderPrix = new JButton("Valider");
+        btnValiderPrix.addActionListener(e -> this.mettreAJourNombreTotalBlocs());
+        prixPanel.add(btnValiderPrix, BorderLayout.EAST);
+        rightSideBar.add(prixPanel, gbc);
 
         gbc.gridy = 11;
         gbc.gridx = 0;
@@ -624,12 +624,18 @@ public class MainWindow extends JFrame {
 
         gbc.gridy = 12;
         gbc.weighty = 0.0;
-        gbc.insets = new Insets(10, 5, 5, 5);
+        gbc.insets = new Insets(10, 5, 2, 5);
+        JButton btnSimulation = new JButton("Lancer la simulation");
+        btnSimulation.addActionListener(e -> this.afficherEstimation());
+        rightSideBar.add(btnSimulation, gbc);
+
+        gbc.gridy = 13;
+        gbc.insets = new Insets(2, 5, 5, 5);
         JScrollPane scrollResultat = new JScrollPane(this.txtResultatEstimation);
         scrollResultat.setBorder(BorderFactory.createTitledBorder("Resultat estimation"));
         rightSideBar.add(scrollResultat, gbc);
 
-        gbc.gridy = 13;
+        gbc.gridy = 14;
         gbc.weighty = 1.0;
         rightSideBar.add(Box.createGlue(), gbc);
 
