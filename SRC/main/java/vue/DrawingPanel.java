@@ -1100,7 +1100,14 @@ public class DrawingPanel extends JPanel {
             double zClipImageL = zone.getLargeur() / echellePoucesParPixel;
             double zClipImageH = zone.getHauteur() / echellePoucesParPixel;
             
-            if ("TRIANGULAIRE".equals(typeForme)) {
+            if ("RECTANGULAIRE".equals(typeForme)) {
+                int clipX = (int) Math.round(context.x + (zClipImageX / imageVue.getWidth()) * context.largeur);
+                int clipY = (int) Math.round(context.y + (zClipImageY / imageVue.getHeight()) * context.hauteur);
+                int clipW = (int) Math.round((zClipImageL / imageVue.getWidth()) * context.largeur);
+                int clipH = (int) Math.round((zClipImageH / imageVue.getHeight()) * context.hauteur);
+                clipShape = new Rectangle(clipX, clipY, Math.max(1, clipW), Math.max(1, clipH));
+
+            } else if ("TRIANGULAIRE".equals(typeForme)) {
                 int sommetX = (int) Math.round(context.x + ((zClipImageX + zClipImageL / 2) / imageVue.getWidth()) * context.largeur);
                 int sommetY = (int) Math.round(context.y + (zClipImageY / imageVue.getHeight()) * context.hauteur);
                 int basGX = (int) Math.round(context.x + (zClipImageX / imageVue.getWidth()) * context.largeur);
