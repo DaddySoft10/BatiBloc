@@ -17,6 +17,11 @@ public class CommandManager {
         this.redoStack.clear();
     }
 
+    public void registerCommand(Command command) {
+        this.undoStack.push(command);
+        this.redoStack.clear();
+    }
+
     public void undo() {
         if (!this.undoStack.isEmpty()) {
             Command command = this.undoStack.pop();

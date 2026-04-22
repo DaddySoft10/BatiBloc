@@ -142,10 +142,10 @@ public class MainWindow extends JFrame {
         this.mettreAJourChampEchelle();
         if (zoneSelectionnee == null) {
             this.txtForme.setText("");
-            this.txtLargeur.setText("0.0000");
-            this.txtHauteur.setText("0.0000");
-            this.txtPosX.setText("0.0000");
-            this.txtPosY.setText("0.0000");
+            this.txtLargeur.setText("0'0.0\"");
+            this.txtHauteur.setText("0'0.0\"");
+            this.txtPosX.setText("0'0.0\"");
+            this.txtPosY.setText("0'0.0\"");
             this.lblNombreBlocs.setText(
                     "Nombre de Blocs Total : " + this.controller.getNombreTotalBlocs()
             );
@@ -157,10 +157,10 @@ public class MainWindow extends JFrame {
         }
 
         this.txtForme.setText(formaterTypeForme(zoneSelectionnee.getTypeForme()));
-        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getLargeur()));
-        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getHauteur()));
-        this.txtPosX.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getX()));
-        this.txtPosY.setText(String.format(java.util.Locale.US, "%.2f", zoneSelectionnee.getY()));
+        this.txtLargeur.setText(ImperialParser.formatterImperialCourt(zoneSelectionnee.getLargeur()));
+        this.txtHauteur.setText(ImperialParser.formatterImperialCourt(zoneSelectionnee.getHauteur()));
+        this.txtPosX.setText(ImperialParser.formatterImperialCourt(zoneSelectionnee.getX()));
+        this.txtPosY.setText(ImperialParser.formatterImperialCourt(zoneSelectionnee.getY()));
         if (this.btnSupprimerZone != null) {
             this.btnSupprimerZone.setEnabled(true);
         }
@@ -183,16 +183,16 @@ public class MainWindow extends JFrame {
         this.txtForme = new JTextField("Rectangle");
         this.txtForme.setEditable(false);
 
-        this.txtLargeur = this.createNumberField();
+        this.txtLargeur = this.createImperialField();
         this.txtLargeur.setEditable(true);
 
-        this.txtHauteur = this.createNumberField();
+        this.txtHauteur = this.createImperialField();
         this.txtHauteur.setEditable(true);
 
-        this.txtPosX = this.createNumberField();
+        this.txtPosX = this.createImperialField();
         this.txtPosX.setEditable(true);
 
-        this.txtPosY = this.createNumberField();
+        this.txtPosY = this.createImperialField();
         this.txtPosY.setEditable(true);
 
         this.txtEchelle = this.createNumberField();
@@ -274,6 +274,40 @@ public class MainWindow extends JFrame {
                     field.setText(String.format(java.util.Locale.US, "%.4f", val));
                 } catch (NumberFormatException ex) {
                     field.setText("0.0000");
+                }
+            }
+        });
+
+        return field;
+    }
+
+    private JTextField createImperialField() {
+        JTextField field = new JTextField("0'0.0\"");
+
+        field.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+                char c = e.getKeyChar();
+                if (!Character.isDigit(c) && c != '.' && c != '\'' && c != '"' && c != ' ' && c != '/'
+                        && c != KeyEvent.VK_BACK_SPACE && c != KeyEvent.VK_DELETE) {
+                    e.consume();
+                }
+            }
+        });
+
+        field.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                String text = field.getText().trim();
+                if (text.isEmpty()) {
+                    field.setText("0'0.0\"");
+                    return;
+                }
+                try {
+                    double val = ImperialParser.parsePouces(text);
+                    field.setText(ImperialParser.formatterImperialCourt(val));
+                } catch (Exception ex) {
+                    field.setText("0'0.0\"");
                 }
             }
         });
@@ -763,17 +797,17 @@ public class MainWindow extends JFrame {
 
         if (zone == null) {
             this.txtForme.setText("Rectangle");
-            this.txtLargeur.setText("0.0000");
-            this.txtHauteur.setText("0.0000");
-            this.txtPosX.setText("0.0000");
-            this.txtPosY.setText("0.0000");
+            this.txtLargeur.setText("0'0.0\"");
+            this.txtHauteur.setText("0'0.0\"");
+            this.txtPosX.setText("0'0.0\"");
+            this.txtPosY.setText("0'0.0\"");
             return;
         }
 
-        this.txtPosX.setText(String.format(java.util.Locale.US, "%.4f", zone.getX()));
-        this.txtPosY.setText(String.format(java.util.Locale.US, "%.4f", zone.getY()));
-        this.txtLargeur.setText(String.format(java.util.Locale.US, "%.4f", zone.getLargeur()));
-        this.txtHauteur.setText(String.format(java.util.Locale.US, "%.4f", zone.getHauteur()));
+        this.txtPosX.setText(ImperialParser.formatterImperialCourt(zone.getX()));
+        this.txtPosY.setText(ImperialParser.formatterImperialCourt(zone.getY()));
+        this.txtLargeur.setText(ImperialParser.formatterImperialCourt(zone.getLargeur()));
+        this.txtHauteur.setText(ImperialParser.formatterImperialCourt(zone.getHauteur()));
 
         switch (zone.getTypeForme()) {
             case "RECTANGULAIRE" -> this.txtForme.setText("Rectangle");

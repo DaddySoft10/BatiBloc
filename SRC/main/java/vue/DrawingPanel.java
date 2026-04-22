@@ -562,6 +562,7 @@ public class DrawingPanel extends JPanel {
         this.indexZoneDeplacement = indexSelectionne;
         this.dernierXMonde = coordonneesMonde[0];
         this.dernierYMonde = coordonneesMonde[1];
+        this.mainWindow.getController().demarrerTracking(indexSelectionne);
     }
 
     private void deplacerZoneDepuisSouris(int xPanel, int yPanel) {
@@ -576,7 +577,7 @@ public class DrawingPanel extends JPanel {
             return;
         }
 
-        this.mainWindow.getController().deplacerZone(this.indexZoneDeplacement, dx, dy);
+        this.mainWindow.getController().deplacerZoneDirect(this.indexZoneDeplacement, dx, dy);
         this.dernierXMonde = coordonneesMonde[0];
         this.dernierYMonde = coordonneesMonde[1];
         this.mainWindow.rafraichirPanneauDroit();
@@ -587,6 +588,7 @@ public class DrawingPanel extends JPanel {
         int indexSnap = this.indexZoneDeplacement;
         this.annulerDeplacementZone();
         this.appliquerAimant(indexSnap);
+        this.mainWindow.getController().finaliserDeplacement(indexSnap);
         this.mainWindow.mettreAJourNombreTotalBlocs();
         this.repaint();
     }
@@ -638,7 +640,7 @@ public class DrawingPanel extends JPanel {
         }
 
         if (snapDx != 0.0 || snapDy != 0.0) {
-            this.mainWindow.getController().deplacerZone(indexZone, snapDx, snapDy);
+            this.mainWindow.getController().deplacerZoneDirect(indexZone, snapDx, snapDy);
             this.mainWindow.rafraichirPanneauDroit();
         }
     }

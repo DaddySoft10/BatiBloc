@@ -31,6 +31,9 @@ public class Controller {
     private int nombreTotalBlocs;
     private String dernierMessage;
     private double prixParBloc;
+    private int indexZoneTracking;
+    private double posXInitialeTracking;
+    private double posYInitialeTracking;
 
     public Controller() {
         this.batiment = new Batiment();
@@ -41,6 +44,9 @@ public class Controller {
         this.nombreTotalBlocs = 0;
         this.dernierMessage = "";
         this.prixParBloc = 20.0;
+        this.indexZoneTracking = -1;
+        this.posXInitialeTracking = 0.0;
+        this.posYInitialeTracking = 0.0;
     }
 
     public double getPrixParBloc() {
@@ -530,6 +536,87 @@ public class Controller {
             @Override
             public void undo() {
                 batiment.getFacadeCourante().modifierZone(index, zoneAncienne);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones();
+            }
+        });
+    }
+
+    public void demarrerTracking(int index) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) return;
+        Zone zone = zones.get(index);
+        this.indexZoneTracking = index;
+        this.posXInitialeTracking = zone.getX();
+        this.posYInitialeTracking = zone.getY();
+    }
+
+    public void deplacerZoneDirect(int index, double dx, double dy) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size()) return;
+
+        Zone zoneAncienne = zones.get(index);
+        String typeZoneStr;
+        if (zoneAncienne instanceof ZoneBloc) typeZoneStr = "BLOC";
+        else if (zoneAncienne instanceof ZoneClassique) typeZoneStr = "CLASSIQUE";
+        else typeZoneStr = "OUVERTURE";
+
+        Zone zoneDeplacee = ZoneFactory.creerDepuisTexte(
+                zoneAncienne.getX() + dx,
+                zoneAncienne.getY() + dy,
+                zoneAncienne.getLargeur(), zoneAncienne.getHauteur(),
+                zoneAncienne.getTypeForme().name(),
+                typeZoneStr,
+                zoneAncienne.getRatioCoupe()
+        );
+        this.batiment.getFacadeCourante().modifierZone(index, zoneDeplacee);
+        this.indexZoneSelectionnee = index;
+        this.lancerSimulationToutesLesZones();
+    }
+
+    public void finaliserDeplacement(int index) {
+        List<Zone> zones = this.batiment.getFacadeCourante().getZones();
+        if (index < 0 || index >= zones.size() || index != this.indexZoneTracking) {
+            this.indexZoneTracking = -1;
+            return;
+        }
+
+        Zone zoneFinale = zones.get(index);
+        double xFinal = zoneFinale.getX();
+        double yFinal = zoneFinale.getY();
+        double xInitial = this.posXInitialeTracking;
+        double yInitial = this.posYInitialeTracking;
+        this.indexZoneTracking = -1;
+
+        if (xFinal == xInitial && yFinal == yInitial) {
+            return;
+        }
+
+        String typeZoneStr;
+        if (zoneFinale instanceof ZoneBloc) typeZoneStr = "BLOC";
+        else if (zoneFinale instanceof ZoneClassique) typeZoneStr = "CLASSIQUE";
+        else typeZoneStr = "OUVERTURE";
+
+        Zone zoneInitiale = ZoneFactory.creerDepuisTexte(
+                xInitial, yInitial,
+                zoneFinale.getLargeur(), zoneFinale.getHauteur(),
+                zoneFinale.getTypeForme().name(),
+                typeZoneStr,
+                zoneFinale.getRatioCoupe()
+        );
+        Zone zoneFinaleCapture = zoneFinale;
+
+        this.commandManager.registerCommand(new domaine.utilitaires.Command() {
+            @Override
+            public void execute() {
+                batiment.getFacadeCourante().modifierZone(index, zoneFinaleCapture);
+                indexZoneSelectionnee = index;
+                lancerSimulationToutesLesZones();
+            }
+
+            @Override
+            public void undo() {
+                batiment.getFacadeCourante().modifierZone(index, zoneInitiale);
                 indexZoneSelectionnee = index;
                 lancerSimulationToutesLesZones();
             }
