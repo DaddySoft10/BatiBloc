@@ -49,6 +49,9 @@ public class DrawingPanel extends JPanel {
     private static final double SEUIL_AIMANT_SCREEN_PX = 15.0;
     private static final Rectangle ZONE_BTN_ANNULER = new Rectangle(10, -1, 160, 30);
     private boolean rognageModeCreerVue;
+    private boolean pannageEnCours;
+    private int pannageXPanel;
+    private int pannageYPanel;
 
     // Resizing feature
     public enum ResizeHandle {
@@ -89,6 +92,9 @@ public class DrawingPanel extends JPanel {
         this.yTronquagePanel = 0;
         this.indexZoneTronquage = -1;
         this.rognageModeCreerVue = false;
+        this.pannageEnCours = false;
+        this.pannageXPanel = 0;
+        this.pannageYPanel = 0;
 
         this.redimensionnementEnCours = false;
         this.poigneeActive = ResizeHandle.NONE;
@@ -97,6 +103,11 @@ public class DrawingPanel extends JPanel {
         this.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+
+                if (e.getButton() == MouseEvent.BUTTON2) {
+                    demarrerPannage(e.getX(), e.getY());
+                    return;
+                }
 
                 if (e.getButton() == MouseEvent.BUTTON1
                         && (modeActuel == ModeInteraction.ROGNAGE || modeActuel == ModeInteraction.TRONQUAGE)
@@ -116,6 +127,9 @@ public class DrawingPanel extends JPanel {
                         demarrerRedimensionnement(e.getX(), e.getY(), poignee);
                     } else {
                         demarrerDeplacementZone(e.getX(), e.getY());
+                        if (!deplacementZoneEnCours) {
+                            demarrerPannage(e.getX(), e.getY());
+                        }
                     }
                 }
                 if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.CREATION) {
@@ -149,6 +163,11 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (pannageEnCours) {
+                    terminerPannage();
+                    return;
+                }
+
                 if (redimensionnementEnCours) {
                     terminerRedimensionnement();
                     return;
@@ -203,6 +222,10 @@ public class DrawingPanel extends JPanel {
 
             @Override
             public void mouseDragged(MouseEvent e) {
+                if (pannageEnCours) {
+                    mettreAJourPannageDepuisSouris(e.getX(), e.getY());
+                    return;
+                }
                 if (redimensionnementEnCours) {
                     mettreAJourRedimensionnementDepuisSouris(e.getX(), e.getY());
                     return;
@@ -241,6 +264,7 @@ public class DrawingPanel extends JPanel {
         boolean quitteModeCreation = this.modeActuel == ModeInteraction.CREATION && mode != ModeInteraction.CREATION;
         this.modeActuel = mode;
         this.rognageEnCours = false;
+        this.terminerPannage();
         this.annulerDeplacementZone();
         if (quitteModeRognage) {
             this.selectionImage = null;
@@ -650,6 +674,26 @@ public class DrawingPanel extends JPanel {
         this.indexZoneDeplacement = -1;
         this.dernierXMonde = 0.0;
         this.dernierYMonde = 0.0;
+    }
+
+    private void demarrerPannage(int xPanel, int yPanel) {
+        this.pannageEnCours = true;
+        this.pannageXPanel = xPanel;
+        this.pannageYPanel = yPanel;
+        this.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+    }
+
+    private void mettreAJourPannageDepuisSouris(int xPanel, int yPanel) {
+        this.offsetX += xPanel - this.pannageXPanel;
+        this.offsetY += yPanel - this.pannageYPanel;
+        this.pannageXPanel = xPanel;
+        this.pannageYPanel = yPanel;
+        this.repaint();
+    }
+
+    private void terminerPannage() {
+        this.pannageEnCours = false;
+        this.setCursor(java.awt.Cursor.getDefaultCursor());
     }
 
     private void gererClicSelection(MouseEvent e) {
