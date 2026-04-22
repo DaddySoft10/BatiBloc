@@ -1147,11 +1147,10 @@ public class DrawingPanel extends JPanel {
             double zClipImageH = zone.getHauteur() / echellePoucesParPixel;
             
             if ("RECTANGULAIRE".equals(typeForme)) {
-                int clipX = (int) Math.round(context.x + (zClipImageX / imageVue.getWidth()) * context.largeur);
                 int clipY = (int) Math.round(context.y + (zClipImageY / imageVue.getHeight()) * context.hauteur);
-                int clipW = (int) Math.round((zClipImageL / imageVue.getWidth()) * context.largeur);
                 int clipH = (int) Math.round((zClipImageH / imageVue.getHeight()) * context.hauteur);
-                clipShape = new Rectangle(clipX, clipY, Math.max(1, clipW), Math.max(1, clipH));
+                // Clip vertical seulement: les blocs fusionnes entre zones adjacentes peuvent traverser horizontalement
+                clipShape = new Rectangle(0, clipY, getWidth(), Math.max(1, clipH));
 
             } else if ("TRIANGULAIRE".equals(typeForme)) {
                 int sommetX = (int) Math.round(context.x + ((zClipImageX + zClipImageL / 2) / imageVue.getWidth()) * context.largeur);
@@ -1195,10 +1194,14 @@ public class DrawingPanel extends JPanel {
                 g2d.setClip(clipShape);
             }
 
+            Color couleurPlein = new Color(185, 50, 40, 210);
+            Color couleurCoupe = new Color(40, 40, 40, 210);
+            Color couleurContour = new Color(15, 15, 15, 230);
+
             for (dto.BlocPlaceDTO bloc : blocs) {
                 double bX = zone.getX() + bloc.getX();
                 double bY = zone.getY() + bloc.getY();
-                
+
                 double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(bX);
                 double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(bY);
                 double imageLargeur = bloc.getLargeur() / echellePoucesParPixel;
@@ -1213,12 +1216,9 @@ public class DrawingPanel extends JPanel {
                     continue;
                 }
 
-                if (bloc.isRetaille()) {
-                    g2d.setColor(new Color(255, 100, 100, 160)); // Rouge pale pour blocs coupes
-                } else {
-                    g2d.setColor(new Color(255, 255, 255, 160)); // Blanc pour blocs normaux
-                }
-
+                g2d.setColor(bloc.isRetaille() ? couleurCoupe : couleurPlein);
+                g2d.fillRect(screenX, screenY, screenLargeur, screenHauteur);
+                g2d.setColor(couleurContour);
                 g2d.drawRect(screenX, screenY, screenLargeur, screenHauteur);
             }
 
@@ -1339,43 +1339,59 @@ public class DrawingPanel extends JPanel {
         double newWidth = this.resizeInitialLargeur;
         double newHeight = this.resizeInitialHauteur;
 
+        // Bords fixes selon la poignee
+        double fixedLeft   = this.resizeInitialX;
+        double fixedRight  = this.resizeInitialX + this.resizeInitialLargeur;
+        double fixedTop    = this.resizeInitialY;
+        double fixedBottom = this.resizeInitialY + this.resizeInitialHauteur;
+
+        double movingRight  = fixedRight  + deltaX;
+        double movingLeft   = fixedLeft   + deltaX;
+        double movingBottom = fixedBottom + deltaY;
+        double movingTop    = fixedTop    + deltaY;
+
         switch (this.poigneeActive) {
-            case RIGHT:
-                newWidth = Math.max(minSize, this.resizeInitialLargeur + deltaX);
-                break;
-            case BOTTOM:
-                newHeight = Math.max(minSize, this.resizeInitialHauteur + deltaY);
-                break;
-            case BOTTOM_RIGHT:
-                newWidth = Math.max(minSize, this.resizeInitialLargeur + deltaX);
-                newHeight = Math.max(minSize, this.resizeInitialHauteur + deltaY);
-                break;
-            case LEFT:
-                newWidth = Math.max(minSize, this.resizeInitialLargeur - deltaX);
-                newX = this.resizeInitialX + (this.resizeInitialLargeur - newWidth);
-                break;
-            case TOP:
-                newHeight = Math.max(minSize, this.resizeInitialHauteur - deltaY);
-                newY = this.resizeInitialY + (this.resizeInitialHauteur - newHeight);
-                break;
-            case TOP_LEFT:
-                newWidth = Math.max(minSize, this.resizeInitialLargeur - deltaX);
-                newX = this.resizeInitialX + (this.resizeInitialLargeur - newWidth);
-                newHeight = Math.max(minSize, this.resizeInitialHauteur - deltaY);
-                newY = this.resizeInitialY + (this.resizeInitialHauteur - newHeight);
-                break;
-            case TOP_RIGHT:
-                newWidth = Math.max(minSize, this.resizeInitialLargeur + deltaX);
-                newHeight = Math.max(minSize, this.resizeInitialHauteur - deltaY);
-                newY = this.resizeInitialY + (this.resizeInitialHauteur - newHeight);
-                break;
-            case BOTTOM_LEFT:
-                newWidth = Math.max(minSize, this.resizeInitialLargeur - deltaX);
-                newX = this.resizeInitialX + (this.resizeInitialLargeur - newWidth);
-                newHeight = Math.max(minSize, this.resizeInitialHauteur + deltaY);
-                break;
-            default:
-                break;
+            case RIGHT -> {
+                newX = Math.min(fixedLeft, movingRight);
+                newWidth = Math.max(minSize, Math.abs(movingRight - fixedLeft));
+            }
+            case LEFT -> {
+                newX = Math.min(fixedRight, movingLeft);
+                newWidth = Math.max(minSize, Math.abs(fixedRight - movingLeft));
+            }
+            case BOTTOM -> {
+                newY = Math.min(fixedTop, movingBottom);
+                newHeight = Math.max(minSize, Math.abs(movingBottom - fixedTop));
+            }
+            case TOP -> {
+                newY = Math.min(fixedBottom, movingTop);
+                newHeight = Math.max(minSize, Math.abs(fixedBottom - movingTop));
+            }
+            case BOTTOM_RIGHT -> {
+                newX = Math.min(fixedLeft, movingRight);
+                newWidth = Math.max(minSize, Math.abs(movingRight - fixedLeft));
+                newY = Math.min(fixedTop, movingBottom);
+                newHeight = Math.max(minSize, Math.abs(movingBottom - fixedTop));
+            }
+            case TOP_LEFT -> {
+                newX = Math.min(fixedRight, movingLeft);
+                newWidth = Math.max(minSize, Math.abs(fixedRight - movingLeft));
+                newY = Math.min(fixedBottom, movingTop);
+                newHeight = Math.max(minSize, Math.abs(fixedBottom - movingTop));
+            }
+            case TOP_RIGHT -> {
+                newX = Math.min(fixedLeft, movingRight);
+                newWidth = Math.max(minSize, Math.abs(movingRight - fixedLeft));
+                newY = Math.min(fixedBottom, movingTop);
+                newHeight = Math.max(minSize, Math.abs(fixedBottom - movingTop));
+            }
+            case BOTTOM_LEFT -> {
+                newX = Math.min(fixedRight, movingLeft);
+                newWidth = Math.max(minSize, Math.abs(fixedRight - movingLeft));
+                newY = Math.min(fixedTop, movingBottom);
+                newHeight = Math.max(minSize, Math.abs(movingBottom - fixedTop));
+            }
+            default -> { }
         }
 
         this.zoneApercuRedimensionnement = new ZoneDTO(
