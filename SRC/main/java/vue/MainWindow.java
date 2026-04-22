@@ -80,8 +80,10 @@ public class MainWindow extends JFrame {
     }
 
     private void setupUndoRedoKeybinds() {
-        KeyStroke undoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
-        KeyStroke redoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Y, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+        KeyStroke undoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Z,
+                Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
+        KeyStroke redoKey = KeyStroke.getKeyStroke(KeyEvent.VK_Y,
+                Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx());
 
         this.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(undoKey, "undo");
         this.getRootPane().getActionMap().put("undo", new AbstractAction() {
@@ -116,16 +118,16 @@ public class MainWindow extends JFrame {
 
     public double getLargeurSaisie() {
         try {
-            return Double.parseDouble(this.txtLargeur.getText().replace(',', '.'));
-        } catch (NumberFormatException e) {
+            return ImperialParser.parsePouces(this.txtLargeur.getText());
+        } catch (Exception e) {
             return 0.0;
         }
     }
 
     public double getHauteurSaisie() {
         try {
-            return Double.parseDouble(this.txtHauteur.getText().replace(',', '.'));
-        } catch (NumberFormatException e) {
+            return ImperialParser.parsePouces(this.txtHauteur.getText());
+        } catch (Exception e) {
             return 0.0;
         }
     }
@@ -147,8 +149,7 @@ public class MainWindow extends JFrame {
             this.txtPosX.setText("0'0.0\"");
             this.txtPosY.setText("0'0.0\"");
             this.lblNombreBlocs.setText(
-                    "Nombre de Blocs Total : " + this.controller.getNombreTotalBlocs()
-            );
+                    "Nombre de Blocs Total : " + this.controller.getNombreTotalBlocs());
 
             if (this.btnSupprimerZone != null) {
                 this.btnSupprimerZone.setEnabled(false);
@@ -174,8 +175,8 @@ public class MainWindow extends JFrame {
     public void mettreAJourCoordonnees(double x, double y) {
         if (this.statusBar != null) {
             this.statusBar.setCoordonnees(String.format("x: %s  y: %s",
-                ImperialParser.formatterImperialCourt(x),
-                ImperialParser.formatterImperialCourt(y)));
+                    ImperialParser.formatterImperialCourt(x),
+                    ImperialParser.formatterImperialCourt(y)));
         }
     }
 
@@ -389,7 +390,7 @@ public class MainWindow extends JFrame {
             this.mettreAJourNombreTotalBlocs();
         });
 
-        JComboBox<String> comboTheme = new JComboBox<>(new String[]{"Automatique", "Clair", "Sombre"});
+        JComboBox<String> comboTheme = new JComboBox<>(new String[] { "Automatique", "Clair", "Sombre" });
         comboTheme.setMaximumSize(new Dimension(120, 28));
         comboTheme.setPreferredSize(new Dimension(120, 28));
         comboTheme.setToolTipText("Changer le theme de l'interface");
@@ -744,8 +745,7 @@ public class MainWindow extends JFrame {
                     zoneSelectionnee.x,
                     zoneSelectionnee.y,
                     zoneSelectionnee.width,
-                    zoneSelectionnee.height
-            );
+                    zoneSelectionnee.height);
             this.drawingPanel.effacerSelectionRognage();
             this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
             this.drawingPanel.repaint();
@@ -772,8 +772,7 @@ public class MainWindow extends JFrame {
                     zoneSelectionnee.y,
                     zoneSelectionnee.width,
                     zoneSelectionnee.height,
-                    nomVue
-            );
+                    nomVue);
             this.rafraichirVuesDuPlan();
             this.drawingPanel.effacerSelectionRognage();
             this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
@@ -816,7 +815,6 @@ public class MainWindow extends JFrame {
             default -> this.txtForme.setText("Rectangle");
         }
 
-
         String typeZone = zone.getTypeZone();
         java.util.Enumeration<AbstractButton> boutons = this.typeGroup.getElements();
         while (boutons.hasMoreElements()) {
@@ -854,7 +852,7 @@ public class MainWindow extends JFrame {
             String forme = this.getFormeSaisie();
             String typeZone = this.getTypeZoneSelectionne();
 
-            this.controller.ajouterZoneDepuisPanneau(x, y, largeur, hauteur, forme, typeZone,0.0);
+            this.controller.ajouterZoneDepuisPanneau(x, y, largeur, hauteur, forme, typeZone, 0.0);
 
             this.chargerZoneSelectionneeDansPanneau();
             this.mettreAJourChampEchelle();
@@ -929,8 +927,7 @@ public class MainWindow extends JFrame {
 
             this.controller.modifierZone(
                     index, x, y, largeur, hauteur,
-                    forme, typeZone, ratioCoupe
-            );
+                    forme, typeZone, ratioCoupe);
 
             this.chargerZoneSelectionneeDansPanneau();
             this.mettreAJourNombreTotalBlocs();
@@ -1003,7 +1000,8 @@ public class MainWindow extends JFrame {
     private void sauvegarderProjet() {
         javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
         fc.setDialogTitle("Sauvegarder le projet");
-        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Projet BatiBloc (*.batibloc)", "batibloc"));
+        fc.setFileFilter(
+                new javax.swing.filechooser.FileNameExtensionFilter("Projet BatiBloc (*.batibloc)", "batibloc"));
         int result = fc.showSaveDialog(this);
         if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
             String chemin = fc.getSelectedFile().getAbsolutePath();
@@ -1022,7 +1020,8 @@ public class MainWindow extends JFrame {
     private void ouvrirProjet() {
         javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
         fc.setDialogTitle("Ouvrir un projet");
-        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Projet BatiBloc (*.batibloc)", "batibloc"));
+        fc.setFileFilter(
+                new javax.swing.filechooser.FileNameExtensionFilter("Projet BatiBloc (*.batibloc)", "batibloc"));
         int result = fc.showOpenDialog(this);
         if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
             try {
@@ -1082,20 +1081,22 @@ public class MainWindow extends JFrame {
                     this.statusBar.setMessage("Aucune vue a exporter.");
                     return;
                 }
-                
+
                 // Creer une image de la taille de la vue
                 int w = imageVue.getWidth();
                 int h = imageVue.getHeight();
-                java.awt.image.BufferedImage export = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.image.BufferedImage export = new java.awt.image.BufferedImage(w, h,
+                        java.awt.image.BufferedImage.TYPE_INT_ARGB);
                 java.awt.Graphics2D g2d = export.createGraphics();
-                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-                
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
                 // Dessiner le fond (image du plan)
                 g2d.drawImage(imageVue, 0, 0, null);
-                
+
                 // Dessiner les zones et les blocs par dessus
                 this.drawingPanel.dessinerZonesEtBlocsSurImage(g2d, imageVue);
-                
+
                 g2d.dispose();
                 javax.imageio.ImageIO.write(export, "PNG", new java.io.File(chemin));
                 this.statusBar.setMessage("Vue exportee avec succes : " + chemin);
@@ -1121,11 +1122,11 @@ public class MainWindow extends JFrame {
                     this.statusBar.setMessage("Aucune vue a exporter.");
                     return;
                 }
-                
+
                 int indexOriginal = this.controller.getIndexVueCourante();
                 int totalHeight = 0;
                 int maxWidth = 0;
-                
+
                 // Calculer les dimensions totales
                 for (int i = 0; i < vues.size(); i++) {
                     this.controller.selectionnerVue(i);
@@ -1135,35 +1136,38 @@ public class MainWindow extends JFrame {
                         maxWidth = Math.max(maxWidth, img.getWidth());
                     }
                 }
-                
+
                 // Creer l'image combinee
-                java.awt.image.BufferedImage combined = new java.awt.image.BufferedImage(maxWidth, totalHeight, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.image.BufferedImage combined = new java.awt.image.BufferedImage(maxWidth, totalHeight,
+                        java.awt.image.BufferedImage.TYPE_INT_ARGB);
                 java.awt.Graphics2D g2d = combined.createGraphics();
-                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-                
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+
                 int yOffset = 0;
                 for (int i = 0; i < vues.size(); i++) {
                     this.controller.selectionnerVue(i);
                     java.awt.image.BufferedImage img = this.controller.getImageVueCourante();
                     if (img != null) {
                         g2d.drawImage(img, 0, yOffset, null);
-                        
+
                         // Dessiner les zones/blocs de cette vue
-                        java.awt.Graphics2D g2dSub = (java.awt.Graphics2D) g2d.create(0, yOffset, img.getWidth(), img.getHeight());
+                        java.awt.Graphics2D g2dSub = (java.awt.Graphics2D) g2d.create(0, yOffset, img.getWidth(),
+                                img.getHeight());
                         this.drawingPanel.dessinerZonesEtBlocsSurImage(g2dSub, img);
                         g2dSub.dispose();
-                        
+
                         yOffset += img.getHeight();
                     }
                 }
-                
+
                 g2d.dispose();
-                
+
                 // Restaurer la vue originale
                 if (indexOriginal >= 0) {
                     this.controller.selectionnerVue(indexOriginal);
                 }
-                
+
                 javax.imageio.ImageIO.write(combined, "PNG", new java.io.File(chemin));
                 this.statusBar.setMessage("Toutes les vues exportees : " + chemin);
             } catch (Exception ex) {
