@@ -217,12 +217,10 @@ public class MainWindow extends JFrame {
 
         this.lblNombreBlocs = new JLabel("Nombre de Blocs Total : 0");
 
-        this.txtResultatEstimation = new JTextArea(5, 20);
+        this.txtResultatEstimation = new JTextArea(10, 20);
         this.txtResultatEstimation.setEditable(false);
         this.txtResultatEstimation.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        this.txtResultatEstimation.setBackground(new Color(245, 245, 245));
-        this.txtResultatEstimation.setLineWrap(true);
-        this.txtResultatEstimation.setWrapStyleWord(true);
+        this.txtResultatEstimation.setLineWrap(false);
 
         this.txtNomNouvelleVue = new JTextField("Vue rognee");
 
