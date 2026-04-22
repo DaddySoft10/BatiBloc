@@ -46,6 +46,9 @@ public class DrawingPanel extends JPanel {
     private int yTronquagePanel;
     private int indexZoneTronquage;
 
+    private static final double SEUIL_AIMANT_SCREEN_PX = 15.0;
+    private JButton btnAnnulerRognage;
+
     // Resizing feature
     public enum ResizeHandle {
         TOP_LEFT, TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM, BOTTOM_LEFT, LEFT, NONE;
@@ -162,19 +165,7 @@ public class DrawingPanel extends JPanel {
 
                 rognageEnCours = false;
                 mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
-                
-                // Auto-rogner apres le trace et retourner en mode SELECTION
-                Rectangle sel = getSelectionRognageImage();
-                if (sel != null && sel.width > 5 && sel.height > 5) {
-                    try {
-                        mainWindow.getController().rognerVueCourante(sel.x, sel.y, sel.width, sel.height);
-                        effacerSelectionRognage();
-                        mainWindow.activerModeSelection();
-                        repaint();
-                    } catch (Exception ignored) {
-                        // Erreur de rognage geree silencieusement
-                    }
-                }
+                repaint();
             }
 
             @Override
@@ -217,6 +208,28 @@ public class DrawingPanel extends JPanel {
         });
 
         this.addMouseWheelListener(this::gererZoomMolette);
+
+        this.setLayout(null);
+        this.btnAnnulerRognage = new JButton("✕ Annuler rognage");
+        this.btnAnnulerRognage.setBackground(new Color(200, 40, 40));
+        this.btnAnnulerRognage.setForeground(Color.WHITE);
+        this.btnAnnulerRognage.setFont(new Font("SansSerif", Font.BOLD, 12));
+        this.btnAnnulerRognage.setFocusPainted(false);
+        this.btnAnnulerRognage.setVisible(false);
+        this.btnAnnulerRognage.addActionListener(e -> this.setModeActuel(ModeInteraction.SELECTION));
+        this.add(this.btnAnnulerRognage);
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                repositionnerBoutonAnnuler();
+            }
+        });
+    }
+
+    private void repositionnerBoutonAnnuler() {
+        if (this.btnAnnulerRognage != null) {
+            this.btnAnnulerRognage.setBounds(10, this.getHeight() - 52, 150, 30);
+        }
     }
 
     public void setModeActuel(ModeInteraction mode) {
@@ -234,6 +247,10 @@ public class DrawingPanel extends JPanel {
         }
         if (quitteModeCreation) {
             this.annulerCreationZone();
+        }
+        if (this.btnAnnulerRognage != null) {
+            this.btnAnnulerRognage.setVisible(mode == ModeInteraction.ROGNAGE);
+            this.repositionnerBoutonAnnuler();
         }
         this.repaint();
     }
@@ -559,8 +576,63 @@ public class DrawingPanel extends JPanel {
     }
 
     private void terminerDeplacementZone() {
+        int indexSnap = this.indexZoneDeplacement;
         this.annulerDeplacementZone();
+        this.appliquerAimant(indexSnap);
+        this.mainWindow.mettreAJourNombreTotalBlocs();
         this.repaint();
+    }
+
+    private void appliquerAimant(int indexZone) {
+        if (indexZone < 0) return;
+
+        BufferedImage image = this.mainWindow.getController().getImageVueCourante();
+        RenderContext context = this.calculerContexteRendu(image);
+        if (image == null || context == null || context.largeur <= 0) return;
+
+        List<ZoneDTO> zones = this.mainWindow.getController().getZones();
+        if (indexZone >= zones.size()) return;
+        ZoneDTO zone = zones.get(indexZone);
+
+        double echelle = this.mainWindow.getController().getEchellePoucesParPixel();
+        double imgToScreen = context.largeur / image.getWidth();
+        double seuilImg = SEUIL_AIMANT_SCREEN_PX / imgToScreen;
+
+        double zL = zone.getX() / echelle;
+        double zR = (zone.getX() + zone.getLargeur()) / echelle;
+        double zT = zone.getY() / echelle;
+        double zB = (zone.getY() + zone.getHauteur()) / echelle;
+
+        double snapDx = 0.0, snapDy = 0.0;
+        boolean snappedX = false, snappedY = false;
+
+        for (int i = 0; i < zones.size(); i++) {
+            if (i == indexZone) continue;
+            ZoneDTO other = zones.get(i);
+            double oL = other.getX() / echelle;
+            double oR = (other.getX() + other.getLargeur()) / echelle;
+            double oT = other.getY() / echelle;
+            double oB = (other.getY() + other.getHauteur()) / echelle;
+
+            if (!snappedX) {
+                if (Math.abs(zR - oL) <= seuilImg)      { snapDx = oL - zR; snappedX = true; }
+                else if (Math.abs(zL - oR) <= seuilImg) { snapDx = oR - zL; snappedX = true; }
+                else if (Math.abs(zL - oL) <= seuilImg) { snapDx = oL - zL; snappedX = true; }
+                else if (Math.abs(zR - oR) <= seuilImg) { snapDx = oR - zR; snappedX = true; }
+            }
+            if (!snappedY) {
+                if (Math.abs(zB - oT) <= seuilImg)      { snapDy = oT - zB; snappedY = true; }
+                else if (Math.abs(zT - oB) <= seuilImg) { snapDy = oB - zT; snappedY = true; }
+                else if (Math.abs(zT - oT) <= seuilImg) { snapDy = oT - zT; snappedY = true; }
+                else if (Math.abs(zB - oB) <= seuilImg) { snapDy = oB - zB; snappedY = true; }
+            }
+            if (snappedX && snappedY) break;
+        }
+
+        if (snapDx != 0.0 || snapDy != 0.0) {
+            this.mainWindow.getController().deplacerZone(indexZone, snapDx, snapDy);
+            this.mainWindow.rafraichirPanneauDroit();
+        }
     }
 
     private void annulerDeplacementZone() {
@@ -1466,6 +1538,7 @@ public class DrawingPanel extends JPanel {
         this.indexZoneTronquage = -1;
         this.mainWindow.rafraichirPanneauDroit();
         this.mainWindow.mettreAJourNombreTotalBlocs();
+        this.mainWindow.activerModeSelection();
         this.repaint();
     }
 

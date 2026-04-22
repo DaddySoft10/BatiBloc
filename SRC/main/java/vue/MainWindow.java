@@ -207,6 +207,13 @@ public class MainWindow extends JFrame {
 
         this.txtPrixParBloc = new JTextField("20.0");
         this.txtPrixParBloc.setEditable(true);
+        this.txtPrixParBloc.addActionListener(e -> this.mettreAJourNombreTotalBlocs());
+        this.txtPrixParBloc.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                mettreAJourNombreTotalBlocs();
+            }
+        });
 
         this.lblNombreBlocs = new JLabel("Nombre de Blocs Total : 0");
 
@@ -497,8 +504,14 @@ public class MainWindow extends JFrame {
         JButton btnRognerVue = new JButton("Rogner vue courante");
         btnRognerVue.setMaximumSize(new Dimension(260, 35));
         btnRognerVue.addActionListener(e -> {
-            this.drawingPanel.setModeActuel(ModeInteraction.ROGNAGE);
-            this.statusBar.setMessage("Mode Rognage: Tracez la zone a rogner sur le plan.");
+            if (this.drawingPanel.getModeActuel() == ModeInteraction.ROGNAGE
+                    && this.drawingPanel.getSelectionRognageImage() != null) {
+                this.rognerVueCouranteDepuisSelection();
+                this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
+            } else {
+                this.drawingPanel.setModeActuel(ModeInteraction.ROGNAGE);
+                this.statusBar.setMessage("Mode Rognage: Tracez la zone, puis cliquez 'Rogner vue courante' pour appliquer.");
+            }
         });
         leftSideBar.add(btnRognerVue);
         leftSideBar.add(Box.createVerticalStrut(6));
@@ -731,6 +744,7 @@ public class MainWindow extends JFrame {
             );
             this.rafraichirVuesDuPlan();
             this.drawingPanel.effacerSelectionRognage();
+            this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
             this.drawingPanel.repaint();
         } catch (IllegalArgumentException | IllegalStateException ex) {
             this.statusBar.setMessage("Creation impossible: " + ex.getMessage());
