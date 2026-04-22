@@ -359,8 +359,6 @@ public class MainWindow extends JFrame {
 
         topToolBar.add(btnImporter);
         topToolBar.addSeparator();
-        topToolBar.add(new JButton("Sauvegarder"));
-        topToolBar.addSeparator();
 
 
         JButton btnCalculer = new JButton("Simulation");
