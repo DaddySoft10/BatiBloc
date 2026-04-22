@@ -354,20 +354,9 @@ public class MainWindow extends JFrame {
         JToolBar topToolBar = new JToolBar();
         topToolBar.setFloatable(false);
 
-        JButton btnImporter = new JButton("Importer un plan PDF");
-        btnImporter.addActionListener(e -> this.importerPlanPdf());
-
-        topToolBar.add(btnImporter);
-        topToolBar.addSeparator();
-
-
         JButton btnCalculer = new JButton("Simulation");
         btnCalculer.addActionListener(e -> this.afficherEstimation());
 
-        // Les modes sont desormais automatiques:
-        // - SELECTION par defaut (active apres init du DrawingPanel)
-        // - CREATION quand on clique un bouton de forme
-        // - ROGNAGE via le bouton Rogner dans le sidebar
         JToggleButton btnTronquage = new JToggleButton("Tronquer triangle");
         btnTronquage.addActionListener(e -> this.drawingPanel.setModeActuel(ModeInteraction.TRONQUAGE));
 
@@ -405,6 +394,12 @@ public class MainWindow extends JFrame {
             this.mettreAJourNombreTotalBlocs();
         });
 
+        JComboBox<String> comboTheme = new JComboBox<>(new String[]{"Automatique", "Clair", "Sombre"});
+        comboTheme.setMaximumSize(new Dimension(120, 28));
+        comboTheme.setPreferredSize(new Dimension(120, 28));
+        comboTheme.setToolTipText("Changer le theme de l'interface");
+        comboTheme.addActionListener(e -> this.appliquerTheme((String) comboTheme.getSelectedItem()));
+
         topToolBar.add(btnUndo);
         topToolBar.add(btnRedo);
         topToolBar.addSeparator();
@@ -415,6 +410,9 @@ public class MainWindow extends JFrame {
         topToolBar.add(btnZoomPlus);
         topToolBar.add(btnZoomMoins);
         topToolBar.add(btnRecentrer);
+        topToolBar.addSeparator();
+        topToolBar.add(new JLabel("Theme: "));
+        topToolBar.add(comboTheme);
         this.add(topToolBar, BorderLayout.NORTH);
     }
 
@@ -952,6 +950,43 @@ public class MainWindow extends JFrame {
         double cout = totalBlocs * this.controller.getPrixParBloc();
         this.lblNombreBlocs.setText(String.format(
                 java.util.Locale.US, "Blocs : %d  |  Cout estimé : %.2f $", totalBlocs, cout));
+    }
+
+    private void appliquerTheme(String theme) {
+        try {
+            switch (theme) {
+                case "Automatique" -> UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                case "Clair" -> {
+                    UIManager.put("control", null);
+                    UIManager.put("info", null);
+                    UIManager.put("nimbusBase", null);
+                    UIManager.put("nimbusLightBackground", null);
+                    UIManager.put("text", null);
+                    UIManager.put("nimbusSelectedText", null);
+                    UIManager.put("nimbusSelectionBackground", null);
+                    UIManager.put("nimbusFocus", null);
+                    UIManager.put("nimbusBlueGrey", null);
+                    UIManager.put("nimbusDisabledText", null);
+                    UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+                }
+                case "Sombre" -> {
+                    UIManager.put("control", new Color(50, 50, 50));
+                    UIManager.put("info", new Color(50, 50, 50));
+                    UIManager.put("nimbusBase", new Color(18, 30, 49));
+                    UIManager.put("nimbusLightBackground", new Color(60, 60, 60));
+                    UIManager.put("text", new Color(220, 220, 220));
+                    UIManager.put("nimbusSelectedText", Color.WHITE);
+                    UIManager.put("nimbusSelectionBackground", new Color(80, 100, 160));
+                    UIManager.put("nimbusFocus", new Color(100, 140, 210));
+                    UIManager.put("nimbusBlueGrey", new Color(60, 60, 70));
+                    UIManager.put("nimbusDisabledText", new Color(130, 130, 130));
+                    UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+                }
+            }
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (Exception ex) {
+            // ignore
+        }
     }
 
     public void activerModeSelection() {
