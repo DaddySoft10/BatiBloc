@@ -48,6 +48,7 @@ public class DrawingPanel extends JPanel {
 
     private static final double SEUIL_AIMANT_SCREEN_PX = 15.0;
     private static final Rectangle ZONE_BTN_ANNULER = new Rectangle(10, -1, 160, 30);
+    private boolean rognageModeCreerVue;
 
     // Resizing feature
     public enum ResizeHandle {
@@ -87,6 +88,7 @@ public class DrawingPanel extends JPanel {
         this.tronquageEnCours = false;
         this.yTronquagePanel = 0;
         this.indexZoneTronquage = -1;
+        this.rognageModeCreerVue = false;
 
         this.redimensionnementEnCours = false;
         this.poigneeActive = ResizeHandle.NONE;
@@ -96,7 +98,8 @@ public class DrawingPanel extends JPanel {
             @Override
             public void mousePressed(MouseEvent e) {
 
-                if (e.getButton() == MouseEvent.BUTTON1 && modeActuel == ModeInteraction.ROGNAGE
+                if (e.getButton() == MouseEvent.BUTTON1
+                        && (modeActuel == ModeInteraction.ROGNAGE || modeActuel == ModeInteraction.TRONQUAGE)
                         && getBtnAnnulerBounds().contains(e.getX(), e.getY())) {
                     setModeActuel(ModeInteraction.SELECTION);
                     return;
@@ -171,6 +174,15 @@ public class DrawingPanel extends JPanel {
 
                 rognageEnCours = false;
                 mettreAJourSelectionDepuisSouris(e.getX(), e.getY());
+
+                Rectangle sel = getSelectionRognageImage();
+                if (sel != null && sel.width > 5 && sel.height > 5) {
+                    if (rognageModeCreerVue) {
+                        mainWindow.creerNouvelleVueRogneeDepuisSelection();
+                    } else {
+                        mainWindow.rognerVueCouranteDepuisSelection();
+                    }
+                }
                 repaint();
             }
 
@@ -233,6 +245,7 @@ public class DrawingPanel extends JPanel {
         if (quitteModeRognage) {
             this.selectionImage = null;
             this.selectionAffichee = null;
+            this.rognageModeCreerVue = false;
         }
         if (quitteModeCreation) {
             this.annulerCreationZone();
@@ -246,6 +259,16 @@ public class DrawingPanel extends JPanel {
 
     public void setModeRognageActif(boolean actif) {
         this.setModeActuel(actif ? ModeInteraction.ROGNAGE : ModeInteraction.CREATION);
+    }
+
+    public void activerRognageRognerCourante() {
+        this.rognageModeCreerVue = false;
+        this.setModeActuel(ModeInteraction.ROGNAGE);
+    }
+
+    public void activerRognageCreerVue() {
+        this.rognageModeCreerVue = true;
+        this.setModeActuel(ModeInteraction.ROGNAGE);
     }
 
     public Rectangle getSelectionRognageImage() {
@@ -771,7 +794,9 @@ public class DrawingPanel extends JPanel {
         }
 
         if (this.estModeRognage()) {
-            this.dessinerBoutonAnnulerRognage(g);
+            this.dessinerBoutonAnnuler(g, "✕ Annuler rognage");
+        } else if (this.modeActuel == ModeInteraction.TRONQUAGE) {
+            this.dessinerBoutonAnnuler(g, "✕ Annuler tronquage");
         }
         // Afficher info zoom en bas à gauche
         this.dessinerCreationEnCours(g);
@@ -785,7 +810,7 @@ public class DrawingPanel extends JPanel {
         g.drawString(infoZoom, 14, this.getHeight() - 13);
     }
 
-    private void dessinerBoutonAnnulerRognage(Graphics g) {
+    private void dessinerBoutonAnnuler(Graphics g, String texte) {
         Rectangle b = this.getBtnAnnulerBounds();
         Graphics2D g2d = (Graphics2D) g.create();
         g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
@@ -797,10 +822,9 @@ public class DrawingPanel extends JPanel {
         g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
         g2d.setColor(Color.WHITE);
         java.awt.FontMetrics fm = g2d.getFontMetrics();
-        String txt = "✕ Annuler rognage";
-        int tx = b.x + (b.width - fm.stringWidth(txt)) / 2;
+        int tx = b.x + (b.width - fm.stringWidth(texte)) / 2;
         int ty = b.y + (b.height + fm.getAscent() - fm.getDescent()) / 2;
-        g2d.drawString(txt, tx, ty);
+        g2d.drawString(texte, tx, ty);
         g2d.dispose();
     }
 

@@ -505,12 +505,17 @@ public class Controller {
 
         Zone zoneAncienne = zones.get(index);
         // On doit utiliser factory pour creer une copie profonde si on bouge
+        String typeZoneStr;
+        if (zoneAncienne instanceof ZoneBloc) typeZoneStr = "BLOC";
+        else if (zoneAncienne instanceof ZoneClassique) typeZoneStr = "CLASSIQUE";
+        else typeZoneStr = "OUVERTURE";
+
         Zone zoneDeplacee = ZoneFactory.creerDepuisTexte(
                 zoneAncienne.getX() + dx,
                 zoneAncienne.getY() + dy,
                 zoneAncienne.getLargeur(), zoneAncienne.getHauteur(),
                 zoneAncienne.getTypeForme().name(),
-                zoneAncienne instanceof ZoneBloc ? "BLOC" : (zoneAncienne instanceof domaine.ZoneClassique ? "CLASSIQUE" : "AUTRE"),
+                typeZoneStr,
                 zoneAncienne.getRatioCoupe()
         );
 
@@ -659,7 +664,7 @@ public class Controller {
     }
 
     private ZoneDTO convertirEnZoneDTO(Zone zone) {
-        String typeZone = "ZONE";
+        String typeZone;
         java.util.List<dto.BlocPlaceDTO> dtos = new java.util.ArrayList<>();
         if (zone instanceof ZoneBloc zb) {
             typeZone = "BLOC";
@@ -668,6 +673,8 @@ public class Controller {
             }
         } else if (zone instanceof ZoneClassique) {
             typeZone = "CLASSIQUE";
+        } else {
+            typeZone = "OUVERTURE";
         }
 
         return new ZoneDTO(

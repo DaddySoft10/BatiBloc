@@ -504,14 +504,8 @@ public class MainWindow extends JFrame {
         JButton btnRognerVue = new JButton("Rogner vue courante");
         btnRognerVue.setMaximumSize(new Dimension(260, 35));
         btnRognerVue.addActionListener(e -> {
-            if (this.drawingPanel.getModeActuel() == ModeInteraction.ROGNAGE
-                    && this.drawingPanel.getSelectionRognageImage() != null) {
-                this.rognerVueCouranteDepuisSelection();
-                this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
-            } else {
-                this.drawingPanel.setModeActuel(ModeInteraction.ROGNAGE);
-                this.statusBar.setMessage("Mode Rognage: Tracez la zone, puis cliquez 'Rogner vue courante' pour appliquer.");
-            }
+            this.drawingPanel.activerRognageRognerCourante();
+            this.statusBar.setMessage("Mode Rognage: Tracez la zone a rogner.");
         });
         leftSideBar.add(btnRognerVue);
         leftSideBar.add(Box.createVerticalStrut(6));
@@ -520,7 +514,10 @@ public class MainWindow extends JFrame {
         leftSideBar.add(Box.createVerticalStrut(6));
         JButton btnCreerVueRognee = new JButton("Creer nouvelle vue rognee");
         btnCreerVueRognee.setMaximumSize(new Dimension(260, 35));
-        btnCreerVueRognee.addActionListener(e -> this.creerNouvelleVueRogneeDepuisSelection());
+        btnCreerVueRognee.addActionListener(e -> {
+            this.drawingPanel.activerRognageCreerVue();
+            this.statusBar.setMessage("Mode Rognage: Tracez la zone — la nouvelle vue sera creee automatiquement.");
+        });
         leftSideBar.add(btnCreerVueRognee);
         leftSideBar.add(Box.createVerticalStrut(8));
         leftSideBar.add(this.lblVueCourante);
@@ -701,7 +698,7 @@ public class MainWindow extends JFrame {
         }
     }
 
-    private void rognerVueCouranteDepuisSelection() {
+    void rognerVueCouranteDepuisSelection() {
         Rectangle zoneSelectionnee = this.drawingPanel.getSelectionRognageImage();
         if (zoneSelectionnee == null) {
             this.statusBar.setMessage("Activez le mode rognage et selectionnez une zone.");
@@ -716,13 +713,14 @@ public class MainWindow extends JFrame {
                     zoneSelectionnee.height
             );
             this.drawingPanel.effacerSelectionRognage();
+            this.drawingPanel.setModeActuel(ModeInteraction.SELECTION);
             this.drawingPanel.repaint();
         } catch (IllegalArgumentException | IllegalStateException ex) {
             this.statusBar.setMessage("Rognage impossible: " + ex.getMessage());
         }
     }
 
-    private void creerNouvelleVueRogneeDepuisSelection() {
+    void creerNouvelleVueRogneeDepuisSelection() {
         Rectangle zoneSelectionnee = this.drawingPanel.getSelectionRognageImage();
         if (zoneSelectionnee == null) {
             this.statusBar.setMessage("Activez le mode rognage et selectionnez une zone.");
