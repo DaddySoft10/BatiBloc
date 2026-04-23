@@ -221,7 +221,8 @@ public class MainWindow extends JFrame {
         this.txtResultatEstimation = new JTextArea(10, 20);
         this.txtResultatEstimation.setEditable(false);
         this.txtResultatEstimation.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        this.txtResultatEstimation.setLineWrap(false);
+        this.txtResultatEstimation.setLineWrap(true);
+        this.txtResultatEstimation.setWrapStyleWord(true);
 
         this.txtNomNouvelleVue = new JTextField("Vue rognee");
 
@@ -630,13 +631,15 @@ public class MainWindow extends JFrame {
 
         gbc.gridy = 13;
         gbc.insets = new Insets(2, 5, 5, 5);
-        JScrollPane scrollResultat = new JScrollPane(this.txtResultatEstimation);
-        scrollResultat.setBorder(BorderFactory.createTitledBorder("Resultat estimation"));
-        rightSideBar.add(scrollResultat, gbc);
-
-        gbc.gridy = 14;
+        gbc.fill = GridBagConstraints.BOTH;
         gbc.weighty = 1.0;
-        rightSideBar.add(Box.createGlue(), gbc);
+        JScrollPane scrollResultat = new JScrollPane(
+                this.txtResultatEstimation,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollResultat.setBorder(BorderFactory.createTitledBorder("Resultat estimation"));
+        scrollResultat.setMinimumSize(new Dimension(100, 160));
+        rightSideBar.add(scrollResultat, gbc);
 
         rightSideBar.setMinimumSize(new Dimension(260, 0));
         return rightSideBar;
@@ -985,6 +988,8 @@ public class MainWindow extends JFrame {
                 }
             }
             SwingUtilities.updateComponentTreeUI(this);
+            this.revalidate();
+            this.repaint();
         } catch (Exception ex) {
             // ignore
         }
