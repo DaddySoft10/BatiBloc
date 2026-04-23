@@ -993,6 +993,19 @@ public class MainWindow extends JFrame {
         } catch (Exception ex) {
             // ignore
         }
+        // Nimbus resets editable state on JTextFields — restore manually
+        SwingUtilities.invokeLater(() -> {
+            if (this.txtPrixParBloc != null)   this.txtPrixParBloc.setEditable(true);
+            if (this.txtLargeur != null)        this.txtLargeur.setEditable(true);
+            if (this.txtHauteur != null)        this.txtHauteur.setEditable(true);
+            if (this.txtPosX != null)           this.txtPosX.setEditable(true);
+            if (this.txtPosY != null)           this.txtPosY.setEditable(true);
+            if (this.txtEchelle != null)        this.txtEchelle.setEditable(true);
+            if (this.txtNomNouvelleVue != null) this.txtNomNouvelleVue.setEditable(true);
+            if (this.txtForme != null)          this.txtForme.setEditable(false);
+            if (this.txtNombreBlocs != null)    this.txtNombreBlocs.setEditable(false);
+            if (this.txtResultatEstimation != null) this.txtResultatEstimation.setEditable(false);
+        });
     }
 
     public void activerModeSelection() {
