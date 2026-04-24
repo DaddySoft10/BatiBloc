@@ -649,21 +649,36 @@ public class Controller {
         List<ZoneBloc.BlocPlace> blocsGlobaux = domaine.SimulateurPlacement.simulerFacade(this.batiment.getFacadeCourante().getZones());
 
         // Répartir les blocs vers les zones visuelles pour affichage
+        // On assigne chaque bloc à la zone la plus externe (non contenue dans une autre candidate)
+        // pour que les zones incluses dans une plus grande affichent 0 blocs.
+        List<Zone> toutesZones = this.batiment.getFacadeCourante().getZones();
         for (ZoneBloc.BlocPlace bloc : blocsGlobaux) {
-            ZoneBloc cible = null;
-            for (Zone zone : this.batiment.getFacadeCourante().getZones()) {
-                if (zone instanceof ZoneBloc zoneBloc) {
-                    if (bloc.getX() + 0.1 >= zone.getX() && bloc.getX() + 0.1 <= zone.getX() + zone.getLargeur() &&
-                        bloc.getY() + 0.1 >= zone.getY() && bloc.getY() + 0.1 <= zone.getY() + zone.getHauteur()) {
-                        cible = zoneBloc;
-                        break;
+            double px = bloc.getX() + 0.1;
+            double py = bloc.getY() + 0.1;
+
+            java.util.List<ZoneBloc> candidates = new java.util.ArrayList<>();
+            for (Zone zone : toutesZones) {
+                if (zone instanceof ZoneBloc zb) {
+                    if (px >= zone.getX() && px <= zone.getX() + zone.getLargeur() &&
+                        py >= zone.getY() && py <= zone.getY() + zone.getHauteur()) {
+                        candidates.add(zb);
                     }
                 }
             }
+
+            // Supprimer les candidates totalement contenues dans une autre candidate
+            candidates.removeIf(b -> candidates.stream().anyMatch(a -> a != b
+                && b.getX() >= a.getX() && b.getX() + b.getLargeur() <= a.getX() + a.getLargeur()
+                && b.getY() >= a.getY() && b.getY() + b.getHauteur() <= a.getY() + a.getHauteur()));
+
+            // Parmi ce qui reste, prendre la plus grande zone (aire)
+            ZoneBloc cible = candidates.stream()
+                .max(java.util.Comparator.comparingDouble(z -> z.getLargeur() * z.getHauteur()))
+                .orElse(null);
+
             if (cible != null) {
                 double relX = bloc.getX() - cible.getX();
                 double relY = bloc.getY() - cible.getY();
-                
                 List<ZoneBloc.BlocPlace> liste = new java.util.ArrayList<>(cible.getBlocsSimules());
                 liste.add(new ZoneBloc.BlocPlace(relX, relY, bloc.getLargeur(), bloc.getHauteur(), bloc.isRetaille()));
                 cible.setBlocsSimules(liste);
