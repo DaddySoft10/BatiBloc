@@ -36,6 +36,16 @@ public class Batiment implements Serializable {
         this.facades.add(new Facade());
     }
 
+    public void ajouterFacade(int index, Facade facade) {
+        if (facade == null) {
+            throw new IllegalArgumentException("La facade ne peut pas etre nulle.");
+        }
+        if (index < 0 || index > this.facades.size()) {
+            throw new IllegalArgumentException("Index de facade invalide.");
+        }
+        this.facades.add(index, facade);
+    }
+
     public Facade getFacade(int index) {
         if (index < 0 || index >= this.facades.size()) {
             return null;

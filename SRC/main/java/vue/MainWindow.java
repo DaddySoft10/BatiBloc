@@ -90,6 +90,7 @@ public class MainWindow extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 controller.annulerAction();
+                rafraichirVuesDuPlan();
                 drawingPanel.repaint();
                 rafraichirPanneauDroit();
                 statusBar.setMessage("Action annulee.");
@@ -101,6 +102,7 @@ public class MainWindow extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 controller.refaireAction();
+                rafraichirVuesDuPlan();
                 drawingPanel.repaint();
                 rafraichirPanneauDroit();
                 statusBar.setMessage("Action refaite.");
@@ -378,6 +380,7 @@ public class MainWindow extends JFrame {
         JButton btnUndo = new JButton("Undo (Ctrl+Z)");
         btnUndo.addActionListener(e -> {
             this.controller.annulerAction();
+            this.rafraichirVuesDuPlan();
             this.rafraichirPanneauDroit();
             this.drawingPanel.repaint();
             this.mettreAJourNombreTotalBlocs();
@@ -386,6 +389,7 @@ public class MainWindow extends JFrame {
         JButton btnRedo = new JButton("Redo (Ctrl+Y)");
         btnRedo.addActionListener(e -> {
             this.controller.refaireAction();
+            this.rafraichirVuesDuPlan();
             this.rafraichirPanneauDroit();
             this.drawingPanel.repaint();
             this.mettreAJourNombreTotalBlocs();
