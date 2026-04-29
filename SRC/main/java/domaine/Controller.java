@@ -170,16 +170,30 @@ public class Controller {
         BufferedImage nouvelleImage = copierImage(imageRognee);
         BufferedImage ancienneImage = copierImage(imageSource);
         int indexVue = this.indexVueCourante;
+        List<Zone> anciennesZones = new ArrayList<>(this.batiment.getFacade(indexVue).getZones());
+        double decalageX = this.convertirPixelsEnCoordonneeReelle(zoneValide.x);
+        double decalageY = this.convertirPixelsEnCoordonneeReelle(zoneValide.y);
+        List<Zone> nouvellesZones = new ArrayList<>();
+        for (Zone zone : anciennesZones) {
+            nouvellesZones.add(this.copierZoneDeplacee(zone, -decalageX, -decalageY));
+        }
+        int ancienneSelection = this.indexZoneSelectionnee;
 
         this.commandManager.executeCommand(new domaine.utilitaires.Command() {
             @Override
             public void execute() {
                 imagesVues.set(indexVue, nouvelleImage);
+                remplacerZonesFacade(indexVue, nouvellesZones);
+                indexZoneSelectionnee = ancienneSelection;
+                lancerSimulationToutesLesZones();
             }
 
             @Override
             public void undo() {
                 imagesVues.set(indexVue, ancienneImage);
+                remplacerZonesFacade(indexVue, anciennesZones);
+                indexZoneSelectionnee = ancienneSelection;
+                lancerSimulationToutesLesZones();
             }
         });
     }
@@ -204,12 +218,34 @@ public class Controller {
                 zoneValide.width,
                 zoneValide.height
         );
+        int indexVueSource = this.indexVueCourante;
+        Facade facadeSource = this.batiment.getFacade(indexVueSource);
+        double decalageX = this.convertirPixelsEnCoordonneeReelle(zoneValide.x);
+        double decalageY = this.convertirPixelsEnCoordonneeReelle(zoneValide.y);
+        double largeurRognage = this.convertirPixelsEnCoordonneeReelle(zoneValide.width);
+        double hauteurRognage = this.convertirPixelsEnCoordonneeReelle(zoneValide.height);
+        List<Zone> zonesNouvelleVue = new ArrayList<>();
+        if (facadeSource != null) {
+            for (Zone zone : facadeSource.getZones()) {
+                if (this.zoneIntersecteRectangle(zone, decalageX, decalageY, largeurRognage, hauteurRognage)) {
+                    zonesNouvelleVue.add(this.copierZoneDeplacee(zone, -decalageX, -decalageY));
+                }
+            }
+        }
 
         this.batiment.getPlan().ajouterVue(nomVue.trim());
         this.batiment.ajouterFacade();
         this.imagesVues.add(copierImage(imageRognee));
         this.indexVueCourante = this.imagesVues.size() - 1;
         this.batiment.setFacadeCourante(this.indexVueCourante);
+        Facade nouvelleFacade = this.batiment.getFacade(this.indexVueCourante);
+        if (nouvelleFacade != null && facadeSource != null) {
+            nouvelleFacade.setEchellePoucesParPixel(facadeSource.getEchellePoucesParPixel());
+            for (Zone zone : zonesNouvelleVue) {
+                nouvelleFacade.ajouterZone(zone);
+            }
+        }
+        this.lancerSimulationToutesLesZones();
         this.indexZoneSelectionnee = -1;
     }
 
@@ -724,6 +760,54 @@ public class Controller {
         g2d.drawImage(imageSource, 0, 0, null);
         g2d.dispose();
         return copie;
+    }
+
+    private void remplacerZonesFacade(int indexVue, List<Zone> nouvellesZones) {
+        Facade facade = this.batiment.getFacade(indexVue);
+        if (facade == null) {
+            return;
+        }
+
+        while (!facade.getZones().isEmpty()) {
+            facade.supprimerZone(facade.getZones().size() - 1);
+        }
+
+        for (Zone zone : nouvellesZones) {
+            facade.ajouterZone(zone);
+        }
+    }
+
+    private Zone copierZoneDeplacee(Zone zone, double dx, double dy) {
+        String typeZone;
+        if (zone instanceof ZoneBloc) {
+            typeZone = TypeZone.BLOC.name();
+        } else if (zone instanceof ZoneClassique) {
+            typeZone = TypeZone.CLASSIQUE.name();
+        } else {
+            typeZone = TypeZone.OUVERTURE.name();
+        }
+
+        return ZoneFactory.creer(
+                zone.getX() + dx,
+                zone.getY() + dy,
+                zone.getLargeur(),
+                zone.getHauteur(),
+                zone.getTypeForme(),
+                TypeZone.fromLabel(typeZone),
+                zone.getRatioCoupe()
+        );
+    }
+
+    private boolean zoneIntersecteRectangle(Zone zone, double x, double y, double largeur, double hauteur) {
+        double zoneDroite = zone.getX() + zone.getLargeur();
+        double zoneBas = zone.getY() + zone.getHauteur();
+        double rectangleDroite = x + largeur;
+        double rectangleBas = y + hauteur;
+
+        return zone.getX() < rectangleDroite
+                && zoneDroite > x
+                && zone.getY() < rectangleBas
+                && zoneBas > y;
     }
 
     public void sauvegarderProjet(String cheminFichier) throws java.io.IOException {
