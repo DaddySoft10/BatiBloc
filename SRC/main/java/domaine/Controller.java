@@ -170,16 +170,30 @@ public class Controller {
         BufferedImage nouvelleImage = copierImage(imageRognee);
         BufferedImage ancienneImage = copierImage(imageSource);
         int indexVue = this.indexVueCourante;
+        List<Zone> anciennesZones = new ArrayList<>(this.batiment.getFacade(indexVue).getZones());
+        double decalageX = this.convertirPixelsEnCoordonneeReelle(zoneValide.x);
+        double decalageY = this.convertirPixelsEnCoordonneeReelle(zoneValide.y);
+        List<Zone> nouvellesZones = new ArrayList<>();
+        for (Zone zone : anciennesZones) {
+            nouvellesZones.add(this.copierZoneDeplacee(zone, -decalageX, -decalageY));
+        }
+        int ancienneSelection = this.indexZoneSelectionnee;
 
         this.commandManager.executeCommand(new domaine.utilitaires.Command() {
             @Override
             public void execute() {
                 imagesVues.set(indexVue, nouvelleImage);
+                remplacerZonesFacade(indexVue, nouvellesZones);
+                indexZoneSelectionnee = ancienneSelection;
+                lancerSimulationToutesLesZones();
             }
 
             @Override
             public void undo() {
                 imagesVues.set(indexVue, ancienneImage);
+                remplacerZonesFacade(indexVue, anciennesZones);
+                indexZoneSelectionnee = ancienneSelection;
+                lancerSimulationToutesLesZones();
             }
         });
     }
@@ -204,13 +218,49 @@ public class Controller {
                 zoneValide.width,
                 zoneValide.height
         );
+        int indexVueSource = this.indexVueCourante;
+        Facade facadeSource = this.batiment.getFacade(indexVueSource);
+        double decalageX = this.convertirPixelsEnCoordonneeReelle(zoneValide.x);
+        double decalageY = this.convertirPixelsEnCoordonneeReelle(zoneValide.y);
+        double largeurRognage = this.convertirPixelsEnCoordonneeReelle(zoneValide.width);
+        double hauteurRognage = this.convertirPixelsEnCoordonneeReelle(zoneValide.height);
+        List<Zone> zonesNouvelleVue = new ArrayList<>();
+        if (facadeSource != null) {
+            for (Zone zone : facadeSource.getZones()) {
+                if (this.zoneIntersecteRectangle(zone, decalageX, decalageY, largeurRognage, hauteurRognage)) {
+                    zonesNouvelleVue.add(this.copierZoneDeplacee(zone, -decalageX, -decalageY));
+                }
+            }
+        }
 
-        this.batiment.getPlan().ajouterVue(nomVue.trim());
-        this.batiment.ajouterFacade();
-        this.imagesVues.add(copierImage(imageRognee));
-        this.indexVueCourante = this.imagesVues.size() - 1;
-        this.batiment.setFacadeCourante(this.indexVueCourante);
-        this.indexZoneSelectionnee = -1;
+        String nomVueFinal = nomVue.trim();
+        BufferedImage nouvelleImage = copierImage(imageRognee);
+        int nouvelIndex = this.imagesVues.size();
+        int ancienneVueCourante = this.indexVueCourante;
+        int ancienneSelection = this.indexZoneSelectionnee;
+        Facade nouvelleFacade = new Facade();
+        if (facadeSource != null) {
+            nouvelleFacade.setEchellePoucesParPixel(facadeSource.getEchellePoucesParPixel());
+            for (Zone zone : zonesNouvelleVue) {
+                nouvelleFacade.ajouterZone(zone);
+            }
+        }
+
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            @Override
+            public void execute() {
+                insererVue(nouvelIndex, nomVueFinal, nouvelleImage, nouvelleFacade);
+                selectionnerVueInterne(nouvelIndex, -1);
+                lancerSimulationToutesLesZones();
+            }
+
+            @Override
+            public void undo() {
+                retirerVue(nouvelIndex);
+                selectionnerVueInterne(ancienneVueCourante, ancienneSelection);
+                lancerSimulationToutesLesZones();
+            }
+        });
     }
 
     public void supprimerVue(int index) {
@@ -219,30 +269,27 @@ public class Controller {
             throw new IllegalArgumentException("Index de vue invalide.");
         }
 
-        this.batiment.getPlan().supprimerVue(index);
-        this.batiment.supprimerFacade(index);
+        String nomVueSupprimee = vues.get(index);
+        BufferedImage imageSupprimee = this.imagesVues.get(index);
+        Facade facadeSupprimee = this.batiment.getFacade(index);
+        int ancienneVueCourante = this.indexVueCourante;
+        int ancienneSelection = this.indexZoneSelectionnee;
 
-        if (index < this.imagesVues.size()) {
-            this.imagesVues.remove(index);
-        }
+        this.commandManager.executeCommand(new domaine.utilitaires.Command() {
+            @Override
+            public void execute() {
+                retirerVue(index);
+                selectionnerVueApresSuppression(index, ancienneVueCourante);
+                lancerSimulationToutesLesZones();
+            }
 
-        int nbVuesRestantes = this.batiment.getPlan().getVues().size();
-        if (nbVuesRestantes == 0) {
-            this.indexVueCourante = -1;
-            this.batiment.setFacadeCourante(-1);
-            this.indexZoneSelectionnee = -1;
-            return;
-        }
-
-        if (this.indexVueCourante >= nbVuesRestantes) {
-            this.indexVueCourante = nbVuesRestantes - 1;
-        } else if (this.indexVueCourante == index) {
-            this.indexVueCourante = Math.min(index, nbVuesRestantes - 1);
-        } else if (this.indexVueCourante > index) {
-            this.indexVueCourante -= 1;
-        }
-        this.batiment.setFacadeCourante(this.indexVueCourante);
-        this.indexZoneSelectionnee = -1;
+            @Override
+            public void undo() {
+                insererVue(index, nomVueSupprimee, imageSupprimee, facadeSupprimee);
+                selectionnerVueInterne(ancienneVueCourante, ancienneSelection);
+                lancerSimulationToutesLesZones();
+            }
+        });
     }
 
     public int getNombreZonesFacadeCourante() {
@@ -571,7 +618,6 @@ public class Controller {
         );
         this.batiment.getFacadeCourante().modifierZone(index, zoneDeplacee);
         this.indexZoneSelectionnee = index;
-        this.lancerSimulationToutesLesZones();
     }
 
     public void finaliserDeplacement(int index) {
@@ -725,6 +771,102 @@ public class Controller {
         g2d.drawImage(imageSource, 0, 0, null);
         g2d.dispose();
         return copie;
+    }
+
+    private void insererVue(int index, String nomVue, BufferedImage image, Facade facade) {
+        this.batiment.getPlan().ajouterVue(index, nomVue);
+        this.batiment.ajouterFacade(index, facade);
+        this.imagesVues.add(index, image);
+    }
+
+    private void retirerVue(int index) {
+        this.batiment.getPlan().supprimerVue(index);
+        this.batiment.supprimerFacade(index);
+        this.imagesVues.remove(index);
+    }
+
+    private void selectionnerVueApresSuppression(int indexSupprime, int ancienneVueCourante) {
+        int nbVuesRestantes = this.batiment.getPlan().getVues().size();
+        if (nbVuesRestantes == 0) {
+            this.selectionnerVueInterne(-1, -1);
+            return;
+        }
+
+        int nouvelIndex;
+        if (ancienneVueCourante >= nbVuesRestantes) {
+            nouvelIndex = nbVuesRestantes - 1;
+        } else if (ancienneVueCourante == indexSupprime) {
+            nouvelIndex = Math.min(indexSupprime, nbVuesRestantes - 1);
+        } else if (ancienneVueCourante > indexSupprime) {
+            nouvelIndex = ancienneVueCourante - 1;
+        } else {
+            nouvelIndex = ancienneVueCourante;
+        }
+
+        this.selectionnerVueInterne(nouvelIndex, -1);
+    }
+
+    private void selectionnerVueInterne(int indexVue, int indexZone) {
+        int nbVues = this.batiment.getPlan().getVues().size();
+        if (indexVue < 0 || indexVue >= nbVues) {
+            this.indexVueCourante = -1;
+            this.batiment.setFacadeCourante(-1);
+            this.indexZoneSelectionnee = -1;
+            return;
+        }
+
+        this.indexVueCourante = indexVue;
+        this.batiment.setFacadeCourante(indexVue);
+        int nbZones = this.batiment.getFacadeCourante().getZones().size();
+        this.indexZoneSelectionnee = indexZone >= 0 && indexZone < nbZones ? indexZone : -1;
+    }
+
+    private void remplacerZonesFacade(int indexVue, List<Zone> nouvellesZones) {
+        Facade facade = this.batiment.getFacade(indexVue);
+        if (facade == null) {
+            return;
+        }
+
+        while (!facade.getZones().isEmpty()) {
+            facade.supprimerZone(facade.getZones().size() - 1);
+        }
+
+        for (Zone zone : nouvellesZones) {
+            facade.ajouterZone(zone);
+        }
+    }
+
+    private Zone copierZoneDeplacee(Zone zone, double dx, double dy) {
+        String typeZone;
+        if (zone instanceof ZoneBloc) {
+            typeZone = TypeZone.BLOC.name();
+        } else if (zone instanceof ZoneClassique) {
+            typeZone = TypeZone.CLASSIQUE.name();
+        } else {
+            typeZone = TypeZone.OUVERTURE.name();
+        }
+
+        return ZoneFactory.creer(
+                zone.getX() + dx,
+                zone.getY() + dy,
+                zone.getLargeur(),
+                zone.getHauteur(),
+                zone.getTypeForme(),
+                TypeZone.fromLabel(typeZone),
+                zone.getRatioCoupe()
+        );
+    }
+
+    private boolean zoneIntersecteRectangle(Zone zone, double x, double y, double largeur, double hauteur) {
+        double zoneDroite = zone.getX() + zone.getLargeur();
+        double zoneBas = zone.getY() + zone.getHauteur();
+        double rectangleDroite = x + largeur;
+        double rectangleBas = y + hauteur;
+
+        return zone.getX() < rectangleDroite
+                && zoneDroite > x
+                && zone.getY() < rectangleBas
+                && zoneBas > y;
     }
 
     public void sauvegarderProjet(String cheminFichier) throws java.io.IOException {

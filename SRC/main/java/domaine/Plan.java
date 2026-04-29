@@ -42,4 +42,14 @@ public class Plan implements Serializable {
         }
         this.vues.add(nomVue);
     }
+
+    public void ajouterVue(int index, String nomVue) {
+        if (nomVue == null || nomVue.isBlank()) {
+            throw new IllegalArgumentException("Le nom de la vue est invalide.");
+        }
+        if (index < 0 || index > this.vues.size()) {
+            throw new IllegalArgumentException("Index de vue invalide.");
+        }
+        this.vues.add(index, nomVue);
+    }
 }

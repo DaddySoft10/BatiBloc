@@ -6,7 +6,7 @@ JAVA_HOME_UNIX="/c/Program Files/Eclipse Adoptium/jdk-25.0.2.10-hotspot"
 JAVAC="$JAVA_HOME_UNIX/bin/javac"
 JAR_TOOL="$JAVA_HOME_UNIX/bin/jar"
 
-PROJECT="/c/Users/yezza/Desktop/orient/H26-IFT-GLO-Equipe5"
+PROJECT="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_WIN=$(cygpath -w "$PROJECT")
 SRC="$PROJECT/SRC/main/java"
 LIB="$PROJECT/lib"
