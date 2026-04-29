@@ -952,8 +952,8 @@ public class DrawingPanel extends JPanel {
             Color couleurContour;
             switch (zone.getTypeZone()) {
                 case "BLOC":
-                    couleurRemplissage = new Color(70, 130, 180, 80);
-                    couleurContour = new Color(70, 130, 180, 255);
+                    couleurRemplissage = new Color(255, 245, 157, 95);
+                    couleurContour = new Color(230, 196, 60, 255);
                     break;
                 case "CLASSIQUE":
                     couleurRemplissage = new Color(34, 139, 34, 80);
@@ -1196,9 +1196,9 @@ public class DrawingPanel extends JPanel {
                 g2d.setClip(clipShape);
             }
 
-            Color couleurPlein = new Color(185, 50, 40, 210);
-            Color couleurCoupe = new Color(40, 40, 40, 210);
-            Color couleurContour = new Color(15, 15, 15, 230);
+            Color couleurPlein = new Color(150, 150, 150, 75);
+            Color couleurCoupe = new Color(95, 95, 95, 95);
+            Color couleurContour = new Color(70, 70, 70, 120);
 
             for (dto.BlocPlaceDTO bloc : blocs) {
                 double bX = zone.getX() + bloc.getX();
