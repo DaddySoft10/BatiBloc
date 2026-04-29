@@ -366,8 +366,8 @@ public class DrawingPanel extends JPanel {
         }
         double ratioX = (xEcran - context.x) / context.largeur;
         double ratioY = (yEcran - context.y) / context.hauteur;
-        double mondeX = ratioX * image.getWidth();
-        double mondeY = ratioY * image.getHeight();
+        double mondeX = this.mainWindow.getController().convertirPixelsEnCoordonneeReelle(ratioX * image.getWidth());
+        double mondeY = this.mainWindow.getController().convertirPixelsEnCoordonneeReelle(ratioY * image.getHeight());
         return new double[]{mondeX, mondeY};
     }
 
@@ -378,8 +378,10 @@ public class DrawingPanel extends JPanel {
                 || image.getWidth() <= 0 || image.getHeight() <= 0) {
             return null;
         }
-        int xEcran = (int) Math.round(context.x + (xMonde / image.getWidth()) * context.largeur);
-        int yEcran = (int) Math.round(context.y + (yMonde / image.getHeight()) * context.hauteur);
+        double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(xMonde);
+        double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(yMonde);
+        int xEcran = (int) Math.round(context.x + (imageX / image.getWidth()) * context.largeur);
+        int yEcran = (int) Math.round(context.y + (imageY / image.getHeight()) * context.hauteur);
         return new int[]{xEcran, yEcran};
     }
 
@@ -628,14 +630,14 @@ public class DrawingPanel extends JPanel {
         if (indexZone >= zones.size()) return;
         ZoneDTO zone = zones.get(indexZone);
 
-        double echelle = this.mainWindow.getController().getEchellePoucesParPixel();
         double imgToScreen = context.largeur / image.getWidth();
-        double seuilImg = SEUIL_AIMANT_SCREEN_PX / imgToScreen;
+        double seuilReel = this.mainWindow.getController().convertirPixelsEnCoordonneeReelle(
+                SEUIL_AIMANT_SCREEN_PX / imgToScreen);
 
-        double zL = zone.getX() / echelle;
-        double zR = (zone.getX() + zone.getLargeur()) / echelle;
-        double zT = zone.getY() / echelle;
-        double zB = (zone.getY() + zone.getHauteur()) / echelle;
+        double zL = zone.getX();
+        double zR = zone.getX() + zone.getLargeur();
+        double zT = zone.getY();
+        double zB = zone.getY() + zone.getHauteur();
 
         double snapDx = 0.0, snapDy = 0.0;
         boolean snappedX = false, snappedY = false;
@@ -643,22 +645,22 @@ public class DrawingPanel extends JPanel {
         for (int i = 0; i < zones.size(); i++) {
             if (i == indexZone) continue;
             ZoneDTO other = zones.get(i);
-            double oL = other.getX() / echelle;
-            double oR = (other.getX() + other.getLargeur()) / echelle;
-            double oT = other.getY() / echelle;
-            double oB = (other.getY() + other.getHauteur()) / echelle;
+            double oL = other.getX();
+            double oR = other.getX() + other.getLargeur();
+            double oT = other.getY();
+            double oB = other.getY() + other.getHauteur();
 
             if (!snappedX) {
-                if (Math.abs(zR - oL) <= seuilImg)      { snapDx = oL - zR; snappedX = true; }
-                else if (Math.abs(zL - oR) <= seuilImg) { snapDx = oR - zL; snappedX = true; }
-                else if (Math.abs(zL - oL) <= seuilImg) { snapDx = oL - zL; snappedX = true; }
-                else if (Math.abs(zR - oR) <= seuilImg) { snapDx = oR - zR; snappedX = true; }
+                if (Math.abs(zR - oL) <= seuilReel)      { snapDx = oL - zR; snappedX = true; }
+                else if (Math.abs(zL - oR) <= seuilReel) { snapDx = oR - zL; snappedX = true; }
+                else if (Math.abs(zL - oL) <= seuilReel) { snapDx = oL - zL; snappedX = true; }
+                else if (Math.abs(zR - oR) <= seuilReel) { snapDx = oR - zR; snappedX = true; }
             }
             if (!snappedY) {
-                if (Math.abs(zB - oT) <= seuilImg)      { snapDy = oT - zB; snappedY = true; }
-                else if (Math.abs(zT - oB) <= seuilImg) { snapDy = oB - zT; snappedY = true; }
-                else if (Math.abs(zT - oT) <= seuilImg) { snapDy = oT - zT; snappedY = true; }
-                else if (Math.abs(zB - oB) <= seuilImg) { snapDy = oB - zB; snappedY = true; }
+                if (Math.abs(zB - oT) <= seuilReel)      { snapDy = oT - zB; snappedY = true; }
+                else if (Math.abs(zT - oB) <= seuilReel) { snapDy = oB - zT; snappedY = true; }
+                else if (Math.abs(zT - oT) <= seuilReel) { snapDy = oT - zT; snappedY = true; }
+                else if (Math.abs(zB - oB) <= seuilReel) { snapDy = oB - zB; snappedY = true; }
             }
             if (snappedX && snappedY) break;
         }
@@ -908,8 +910,8 @@ public class DrawingPanel extends JPanel {
         
         double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(this.zoneApercuRedimensionnement.getX());
         double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(this.zoneApercuRedimensionnement.getY());
-        double imageLargeur = this.zoneApercuRedimensionnement.getLargeur();
-        double imageHauteur = this.zoneApercuRedimensionnement.getHauteur();
+        double imageLargeur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(this.zoneApercuRedimensionnement.getLargeur());
+        double imageHauteur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(this.zoneApercuRedimensionnement.getHauteur());
 
         int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
         int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
@@ -969,8 +971,8 @@ public class DrawingPanel extends JPanel {
 
             double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
             double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
-            double imageLargeur = zone.getLargeur();
-            double imageHauteur = zone.getHauteur();
+            double imageLargeur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getLargeur());
+            double imageHauteur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getHauteur());
 
             if ("RECTANGULAIRE".equals(typeForme)) {
                 int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
@@ -1067,8 +1069,8 @@ public class DrawingPanel extends JPanel {
 
         double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
         double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
-        double imageLargeur = zone.getLargeur();
-        double imageHauteur = zone.getHauteur();
+        double imageLargeur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getLargeur());
+        double imageHauteur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getHauteur());
 
         int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
         int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
@@ -1266,8 +1268,8 @@ public class DrawingPanel extends JPanel {
 
         double imageX = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX());
         double imageY = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY());
-        double imageLargeur = zone.getLargeur();
-        double imageHauteur = zone.getHauteur();
+        double imageLargeur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getLargeur());
+        double imageHauteur = this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getHauteur());
 
         int screenX = (int) Math.round(context.x + (imageX / imageVue.getWidth()) * context.largeur);
         int screenY = (int) Math.round(context.y + (imageY / imageVue.getHeight()) * context.hauteur);
@@ -1522,13 +1524,13 @@ public class DrawingPanel extends JPanel {
         this.indexZoneTronquage = indexSelectionne;
 
         int[] coinHautGauche = this.convertirMondeVersEcran(
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX()),
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY())
+                zone.getX(),
+                zone.getY()
         );
 
         int[] coinBasDroit = this.convertirMondeVersEcran(
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX() + zone.getLargeur()),
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY() + zone.getHauteur())
+                zone.getX() + zone.getLargeur(),
+                zone.getY() + zone.getHauteur()
         );
 
         if (coinHautGauche == null || coinBasDroit == null) {
@@ -1555,13 +1557,13 @@ public class DrawingPanel extends JPanel {
         }
 
         int[] coinHautGauche = this.convertirMondeVersEcran(
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX()),
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY())
+                zone.getX(),
+                zone.getY()
         );
 
         int[] coinBasDroit = this.convertirMondeVersEcran(
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX() + zone.getLargeur()),
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY() + zone.getHauteur())
+                zone.getX() + zone.getLargeur(),
+                zone.getY() + zone.getHauteur()
         );
 
         if (coinHautGauche == null || coinBasDroit == null) {
@@ -1589,13 +1591,13 @@ public class DrawingPanel extends JPanel {
         }
 
         int[] coinHautGauche = this.convertirMondeVersEcran(
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX()),
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY())
+                zone.getX(),
+                zone.getY()
         );
 
         int[] coinBasDroit = this.convertirMondeVersEcran(
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getX() + zone.getLargeur()),
-                this.mainWindow.getController().convertirCoordonneeReelleEnPixels(zone.getY() + zone.getHauteur())
+                zone.getX() + zone.getLargeur(),
+                zone.getY() + zone.getHauteur()
         );
 
         if (coinHautGauche == null || coinBasDroit == null) {

@@ -1055,32 +1055,8 @@ public class MainWindow extends JFrame {
     }
 
     private void chargerVuesDuPlan() {
-        // Recharger le combo des vues apres un chargement de projet
-        // Le combo est dans le topToolBar - on le reconstruit
-        java.util.List<String> vues = this.controller.getVuesDuPlan();
-        if (vues != null && !vues.isEmpty()) {
-            // Trouver et mettre a jour le comboBox existant si possible
-            java.awt.Component[] components = this.getContentPane().getComponents();
-            for (java.awt.Component comp : components) {
-                if (comp instanceof javax.swing.JToolBar toolbar) {
-                    for (java.awt.Component c : toolbar.getComponents()) {
-                        if (c instanceof javax.swing.JComboBox<?> combo) {
-                            combo.removeAllItems();
-                            @SuppressWarnings("unchecked")
-                            javax.swing.JComboBox<String> comboStr = (javax.swing.JComboBox<String>) combo;
-                            for (String vue : vues) {
-                                comboStr.addItem(vue);
-                            }
-                            int idx = this.controller.getIndexVueCourante();
-                            if (idx >= 0 && idx < vues.size()) {
-                                comboStr.setSelectedIndex(idx);
-                            }
-                            return;
-                        }
-                    }
-                }
-            }
-        }
+        this.rafraichirVuesDuPlan();
+        this.rafraichirPanneauDroit();
     }
 
     private void exporterVueCourantePNG() {
