@@ -571,7 +571,6 @@ public class Controller {
         );
         this.batiment.getFacadeCourante().modifierZone(index, zoneDeplacee);
         this.indexZoneSelectionnee = index;
-        this.lancerSimulationToutesLesZones();
     }
 
     public void finaliserDeplacement(int index) {
